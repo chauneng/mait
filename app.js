@@ -73,7 +73,8 @@ app.get('/cam', (req, res) => {
 });
 
 app.get('/:room', (req, res) => {
-    res.render('room', { roomId: req.params.room });
+    const room_id = req.params.room
+    res.render('room', { roomId: room_id });
   });
   
 io.on('connection', (socket) => {
