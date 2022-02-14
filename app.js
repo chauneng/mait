@@ -1,6 +1,6 @@
 const express = require('express');
 // const Router = require('./routers/index');
-// const globalRouter = require('./routers/stopwatch.js');
+
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
@@ -23,8 +23,6 @@ const server = http.createServer(app);
 //     password: '12345',
 //     database: 'emit'
 // });
-
-
 
 
 const con = mysql.createConnection({
@@ -64,8 +62,7 @@ app.get('/cam', (req, res) => {
 // app.get('/:room', ())
 
 
-
-
+// const whitelist = ["*"];
 //app.use(cors());
 app.use(cors({
     origin : "*",
@@ -113,10 +110,6 @@ app.post('/stopwatch', (req, res) => {
 });
 
 
-
-
-///
-
 app.get('/mainpage', (req, res) => {
     const sql_1 = 'SELECT s.id, s.name, c.code, sd.start_time, sd.end_time FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id LEFT JOIN colors as c ON c.id = s.color_id WHERE sd.user_id = 1;'
     const sql_2 = 'SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = 1;'
@@ -147,9 +140,6 @@ app.get('/mainpage', (req, res) => {
     con.end();
 
 })
-
-
-
 
 
 // app.get('/mainpage', (req, res) => {
@@ -185,28 +175,61 @@ app.get('/mainpage', (req, res) => {
 app.post('/subject', (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
     const body = req.body;
-    const subject = body.subject;
+    const user_id = 1; // 토큰에서 가져오기!
+    const subject_name = body.subject; // request.get.body ?
     const color_code= body.colorCode;
-    
-    con.query(``)
+    console.log(body);
 
+    if (color_code == "") {
+         res.status(401).send( {message: "NO_COLOR_SELECTED"}) 
+    } else if (color_code.length < 6) {
+        res.status(401).send( {message: "INVALID_COLOR"} )
+    };
 
-    // if (body.subject === "" | body.colorCode)
-    const sql = `INSERT INTO subjects(user_id, name, color_id) VALUES (1, "${subject}", "${color_code}")`;
-    console.log(sql);
-    con.query(sql, function(err, result, fields) {
-        if(err) throw err;
-        db_index = result.insertId;
-        console.log(db_index);
-        const sub_sql = `SELECT s.id, s.name, c.code as colorCode FROM subjects AS s LEFT JOIN colors AS c ON c.id = s.color_id WHERE s.id = ${db_index}`;
+    con.query(`SELECT * FROM subjects WHERE user_id = ${user_id} AND name = "${subject_name}"`, function(err, result) {
+        if (err) {
+            console.log("ERROR Execution: ", err);
+            res.send("ERROR");
+            throw err;
+        }
+        console.log("result", result)
+        if (result != "") { 
+            res.status(401).send( {message: "SUBJECT_EXISTS"} )
+        } else {
+            const sql = `INSERT INTO subjects(user_id, name, color_code) VALUES (1, "${subject_name}", "${color_code}")`;
+            console.log(sql);
+            con.query(sql, function(err, result, fields) {
+                if(err) throw err;
 
-    con.query(sub_sql, function (err, result, fields) {
-        if (err) throw err;
-        console.log(err);
+                db_index = result.insertId;
+                console.log(db_index);
 
-        res.send(...result)
-    });  
+                const sub_sql = `SELECT id, name, color_code as colorCode FROM subjects WHERE id = ${db_index}`;
+                con.query(sub_sql, function (err, result, fields) {
+                    if (err) throw err;
+                    console.log(err);
+                    res.send(...result)
+                })
+            })
+        }
     });
+    
+    // const sql = `INSERT INTO subjects(user_id, name, color_code) VALUES (1, "${subject_name}", "${color_code}")`;
+    // console.log(sql);
+    // con.query(sql, function(err, result, fields) {
+    //     if(err) throw err;
+
+    //     db_index = result.insertId;
+    //     console.log(db_index);
+
+    //     const sub_sql = `SELECT id, name, color_code as colorCode FROM subjects WHERE id = ${db_index}`;
+    //     con.query(sub_sql, function (err, result, fields) {
+    //         if (err) throw err;
+    //         console.log(err);
+
+    //     res.send(...result)
+    // });  
+    // });
 
     // const sub_sql = `SELECT s.id, s.name, c.code FROM subjects AS s LEFT JOIN colors AS c ON c.id = s.color_id WHERE s.id = ${db_index}`;
     // console.log("*****");

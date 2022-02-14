@@ -24,8 +24,8 @@ app.get('/stopwatch', (req, res) => {
 
 
 module.exports = async(req, res) => {
-    
-    test.get('/stopwatch', (req, res) => {
+
+    test(req, res) => {
         res.header("Access-Control-Allow-Origin", "*");
         const sql = 'SELECT sd.end_time, sd.start_time, s.name, sd.subject FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id WHERE sd.user_id = 1'
         con.query(sql, function (err, result, fields) {
