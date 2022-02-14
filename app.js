@@ -9,20 +9,33 @@ const app = express();
 const port = 5000;
 // require('./db');
 // app.use('/', Router);
-// const mysql = require('mysql2/promise');
+
 const mysql = require('mysql');
 // const { builtinModules } = require('module');
 
-const http = require('http');
-const Pool = require('mysql/lib/Pool');
-const server = http.createServer(app);
-
+// const Pool = require('mysql/lib/Pool');
 // const con = mysql.createConnection({
 //     host: 'localhost',
 //     user: 'root',
 //     password: '12345',
 //     database: 'emit'
 // });
+
+
+const { v4: uuidV4 } = require('uuid');
+const http = require('http');
+const server = http.createServer(app);
+// const server = app.listen(port);
+const io = require('socket.io')(server);
+// const io = require('socket.io').listen(server);
+// app.set('views', __dirname + '/views');
+// app.set('views', '/views');
+app.set('view engine', 'ejs');
+// app.use(express.static('puiblic'));
+app.use(express.static(__dirname + '/public'));
+// app.use(express.static('public'));
+
+
 
 
 const con = mysql.createConnection({
@@ -59,7 +72,21 @@ app.get('/cam', (req, res) => {
     res.redirect(`/${uuidV4()}`);
 });
 
-// app.get('/:room', ())
+app.get('/:room', (req, res) => {
+    res.render('room', { roomId: req.params.room });
+  });
+  
+io.on('connection', (socket) => {
+socket.on('join-room', (roomId, userId) => {
+    socket.join(roomId);
+    socket.to(roomId).broadcast.emit('user-connected', userId);
+
+    socket.on('disconnect', () => {
+    socket.to(roomId).broadcast.emit('user-disconnected', userId);
+    });
+});
+});
+
 
 
 // const whitelist = ["*"];
@@ -111,7 +138,7 @@ app.post('/stopwatch', (req, res) => {
 
 
 app.get('/mainpage', (req, res) => {
-    const sql_1 = 'SELECT s.id, s.name, c.code, sd.start_time, sd.end_time FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id LEFT JOIN colors as c ON c.id = s.color_id WHERE sd.user_id = 1;'
+    const sql_1 = 'SELECT s.id, s.name, s.color_code, sd.start_time, sd.updated_at FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id WHERE sd.user_id = 1;'
     const sql_2 = 'SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = 1;'
     con.query(sql_1 + sql_2, function(err, result){
         if(err) {
@@ -169,6 +196,7 @@ app.get('/mainpage', (req, res) => {
 //     console.log(result, "***");
     
 // });
+
 
 
 
@@ -241,7 +269,18 @@ app.post('/subject', (req, res) => {
 });
 
 
+// app.get('/statistics', (req, res) => {
+//     const body =
+// })
 
-app.listen(port, () => {
-    console.log('Express listening on port', port);
-});
+
+app.post('study_log', (req, res) => {
+    
+})
+
+
+// app.listen(port, () => {
+//     console.log('Express listening on port', port);
+// });
+
+server.listen(port);
