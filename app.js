@@ -1,35 +1,19 @@
 const express = require('express');
-const globalRouter = require('./routers/stopwatch.js');
+// const Router = require('./routers/index');
+
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
 
-////
-
-const { u4: uuidV4 } = require('uuid');
-const fs = require('fs');
-const https = require('https');
-// const server = https.createServer(
-//     {
-//       key: fs.readFileSync('/etc/letsencrypt/live/localhost:3000/privkey.pem'),
-//       cert: fs.readFileSync('/etc/letsencrypt/live/localhost:3000/cert.pem'),
-//       ca: fs.readFileSync('/etc/letsencrypt/live/localhost:3000/chain.pem'),
-//       requestCert: false,
-//       rejectUnauthorized: false,
-//     },
-//     app
-//   );
-// const io = require('socket.io')(server);
-  
-/////
-
 const app = express();
-const port = 3000;
-require('./db');
+const port = 5000;
+// require('./db');
+// app.use('/', Router);
 
 const mysql = require('mysql');
-const { builtinModules } = require('module');
+// const { builtinModules } = require('module');
 
+// const Pool = require('mysql/lib/Pool');
 // const con = mysql.createConnection({
 //     host: 'localhost',
 //     user: 'root',
@@ -38,12 +22,29 @@ const { builtinModules } = require('module');
 // });
 
 
+const { v4: uuidV4 } = require('uuid');
+const http = require('http');
+const server = http.createServer(app);
+// const server = app.listen(port);
+const io = require('socket.io')(server);
+// const io = require('socket.io').listen(server);
+// app.set('views', __dirname + '/views');
+// app.set('views', '/views');
+app.set('view engine', 'ejs');
+// app.use(express.static('puiblic'));
+app.use(express.static(__dirname + '/public'));
+// app.use(express.static('public'));
+
+
+
+
 const con = mysql.createConnection({
     host: 'emit.chjtdqatvvwb.ap-northeast-2.rds.amazonaws.com',
     port: 3306,
     user: 'admin',
     password: 'jungle_emit',
-    database: 'emit'
+    database: 'emit_2',
+    multipleStatements: true
 });
 
 
@@ -71,13 +72,25 @@ app.get('/cam', (req, res) => {
     res.redirect(`/${uuidV4()}`);
 });
 
-// app.get('/:room', ())
+app.get('/:room', (req, res) => {
+    const room_id = req.params.room
+    res.render('room', { roomId: room_id });
+  });
+  
+io.on('connection', (socket) => {
+socket.on('join-room', (roomId, userId) => {
+    socket.join(roomId);
+    socket.to(roomId).broadcast.emit('user-connected', userId);
+
+    socket.on('disconnect', () => {
+    socket.to(roomId).broadcast.emit('user-disconnected', userId);
+    });
+});
+});
 
 
 
-
-
-app.use('/check', globalRouter);
+// const whitelist = ["*"];
 //app.use(cors());
 app.use(cors({
     origin : "*",
@@ -86,9 +99,12 @@ app.use(cors({
 ));
 
 
-app.get('/', (req, res) => {
-    res.send('express start');
-});
+
+// app.get('/', (req, res) => {
+//     res.send('express start');
+// });
+
+
 
 app.post('/', (req, res) => {
     const body = req.body;
@@ -122,19 +138,20 @@ app.post('/stopwatch', (req, res) => {
 });
 
 
-
-
 app.get('/mainpage', (req, res) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    const sql = 'SELECT s.id, s.name, c.code, sd.start_time, sd.end_time FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id LEFT JOIN colors as c ON c.id = s.color_id WHERE sd.user_id = 1'
-    con.query(sql, function (err, result, fields) {
-        if (err) throw err;
-         
-        // for (i=0; i)
-        // console.log(result);
-        const results = {}
+    const sql_1 = 'SELECT s.id, s.name, s.color_code, sd.start_time, sd.updated_at FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id WHERE sd.user_id = 1;'
+    const sql_2 = 'SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = 1;'
+    con.query(sql_1 + sql_2, function(err, result){
+        if(err) {
+            console.log("Error Execution :", err);
+            res.send("오류");
+            throw err;
+        };
+        const results ={}
+        let res_subject = result[0];
+        let res_todo = result[1];
         results.subjects = result.map((data) => {
-            const {id, name, code, start_time, end_time} = data;
+            const {id, name, code, start_time, end_time, is_done, subject, } = data;
             let calculatedTime = 0;
             return {
                 id, 
@@ -142,42 +159,106 @@ app.get('/mainpage', (req, res) => {
                 color: code,
                 totalTime: calculatedTime
             }
-            console.log(data);
-        })
+        });
+        results.todos = result[1]
         console.log(results);
-        res.send(JSON.stringify(results));
-    });    
-});
+        res.send({"subjects" : res_subject, "todos" : res_todo});
+
+    });
+    con.end();
+
+})
+
+
+// app.get('/mainpage', (req, res) => {
+//     res.header("Access-Control-Allow-Origin", "*");
+//     const result = {};
+//     const sql = 'SELECT s.id, s.name, c.code, sd.start_time, sd.end_time, t.content, t.subject_id, t.is_done FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id LEFT JOIN colors as c ON c.id = s.color_id LEFT JOIN todos as t ON sd.user_id = t.user_id WHERE sd.user_id = 1'
+//     con.query(sql, function (err, result, fields) {
+//         if (err) throw err;
+//         const results = {}
+//         results.subjects = result.map((data) => {
+//             const {id, name, code, start_time, end_time, is_done, subject, } = data;
+//             let calculatedTime = 0;
+//             return {
+//                 id, 
+//                 name,
+//                 color: code,
+//                 totalTime: calculatedTime
+//             }
+//         })
+
+//         // console.log(results, "results");
+//         result = [results];
+//         const sql_todo = `SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = t.user_id WHERE u.id = 1`
+//         console.log(result, "result")
+//         res.send(JSON.stringify(result));
+//     })
+//     console.log(result, "***");
+    
+// });
+
 
 
 
 app.post('/subject', (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
     const body = req.body;
-    // if (body.subject === "" | body.colorCode)
-    const sql = `INSERT INTO subjects(user_id, name, color_id) VALUES (1, "${body.subject}", "${body.colorCode}")`;
-    console.log(sql);
-    con.query(sql, function(err, result, fields) {
-        if(err) throw err;
-        db_index = result.insertId;
-        console.log(db_index);
-        // sql = `SELECT s.id, s.name, c.code FROM subjects AS s LEFT JOIN colors AS c ON c.id = s.color_id WHERE s.user_id = ${db_index}`;
-        // con.query(sql, function(err, result, fields) {
-        //     if(err) throw err;
-        //     console.log(result);
-        //     res.send(result);
-        // });
-        // res.send('success')
+    const user_id = 1; // 토큰에서 가져오기!
+    const subject_name = body.subject; // request.get.body ?
+    const color_code= body.colorCode;
+    console.log(body);
 
-        const sub_sql = `SELECT s.id, s.name, c.code as colorCode FROM subjects AS s LEFT JOIN colors AS c ON c.id = s.color_id WHERE s.id = ${db_index}`;
+    if (color_code == "") {
+         res.status(401).send( {message: "NO_COLOR_SELECTED"}) 
+    } else if (color_code.length < 6) {
+        res.status(401).send( {message: "INVALID_COLOR"} )
+    };
 
-    con.query(sub_sql, function (err, result, fields) {
-        if (err) throw err;
-        console.log(err);
-        
-        res.send(...result)
-    });  
+    con.query(`SELECT * FROM subjects WHERE user_id = ${user_id} AND name = "${subject_name}"`, function(err, result) {
+        if (err) {
+            console.log("ERROR Execution: ", err);
+            res.send("ERROR");
+            throw err;
+        }
+        console.log("result", result)
+        if (result != "") { 
+            res.status(401).send( {message: "SUBJECT_EXISTS"} )
+        } else {
+            const sql = `INSERT INTO subjects(user_id, name, color_code) VALUES (1, "${subject_name}", "${color_code}")`;
+            console.log(sql);
+            con.query(sql, function(err, result, fields) {
+                if(err) throw err;
+
+                db_index = result.insertId;
+                console.log(db_index);
+
+                const sub_sql = `SELECT id, name, color_code as colorCode FROM subjects WHERE id = ${db_index}`;
+                con.query(sub_sql, function (err, result, fields) {
+                    if (err) throw err;
+                    console.log(err);
+                    res.send(...result)
+                })
+            })
+        }
     });
+    
+    // const sql = `INSERT INTO subjects(user_id, name, color_code) VALUES (1, "${subject_name}", "${color_code}")`;
+    // console.log(sql);
+    // con.query(sql, function(err, result, fields) {
+    //     if(err) throw err;
+
+    //     db_index = result.insertId;
+    //     console.log(db_index);
+
+    //     const sub_sql = `SELECT id, name, color_code as colorCode FROM subjects WHERE id = ${db_index}`;
+    //     con.query(sub_sql, function (err, result, fields) {
+    //         if (err) throw err;
+    //         console.log(err);
+
+    //     res.send(...result)
+    // });  
+    // });
 
     // const sub_sql = `SELECT s.id, s.name, c.code FROM subjects AS s LEFT JOIN colors AS c ON c.id = s.color_id WHERE s.id = ${db_index}`;
     // console.log("*****");
@@ -189,7 +270,18 @@ app.post('/subject', (req, res) => {
 });
 
 
+// app.get('/statistics', (req, res) => {
+//     const body =
+// })
 
-app.listen(port, () => {
-    console.log('Express listening on port', port);
-});
+
+app.post('study_log', (req, res) => {
+    
+})
+
+
+// app.listen(port, () => {
+//     console.log('Express listening on port', port);
+// });
+
+server.listen(port);
