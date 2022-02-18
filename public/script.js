@@ -1,5 +1,12 @@
 // const socket = io('http://192.249.31.66/');
+// console.log(1)
+// const io = require("socket.io");
+// const socket = io.connect('/');
 const socket = io('/');
+// const socket = io.connect('https://mait.shop');
+// console.log(socket)
+// console.log(io)
+// console.log('socket',socket);
 const videoGrid = document.getElementById('video-grid');
 const myPeer = new Peer();
 const myVideo = document.createElement('video');

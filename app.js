@@ -25,7 +25,20 @@ const mysql = require('mysql');
 const { v4: uuidV4 } = require('uuid');
 const http = require('http');
 const https = require('https');
-const server = http.createServer(app);
+// const server = https.createServer(app);
+
+const fs = require('fs');
+const server = https.createServer(
+    {
+        key: fs.readFileSync('/etc/letsencrypt/live/mait.shop/privkey.pem'),
+        cert: fs.readFileSync('/etc/letsencrypt/live/mait.shop/cert.pem'),
+        ca: fs.readFileSync('/etc/letsencrypt/live/mait.shop/chain.pem'),
+        requestCert: false,
+        rejectUnauthorized: false,
+    },
+    app
+);
+
 // const server = app.listen(port);
 const io = require('socket.io')(server);
 // const io = require('socket.io').listen(server);
@@ -37,13 +50,17 @@ app.use(express.static(__dirname + '/public'));
 // app.use(express.static('public'));
 
 
-const fs = require('fs');
+
+
+// const fs = require('fs');
 
 const options = { // letsencrypt로 받은 인증서 경로를 입력
     ca: fs.readFileSync('/etc/letsencrypt/live/mait.shop/fullchain.pem'),
     key: fs.readFileSync('/etc/letsencrypt/live/mait.shop/privkey.pem'),
     cert: fs.readFileSync('/etc/letsencrypt/live/mait.shop/cert.pem')
     };
+
+
 
 
 
@@ -289,10 +306,18 @@ app.post('study_log', (req, res) => {
 })
 
 
-// app.listen(port, () => {
-//     console.log('Express listening on port', port);
+app.listen(port, () => {
+    console.log('Express listening on port', port);
+});
+
+
+// // server.listen(port);
+
+// // https.createServer(options, app).listen(443);
+
+// https.createServer(options, app).listen(443, () => {
+//     console.log('Express is listening on port', 443);
 // });
+server.listen(443);
 
-server.listen(port);
-
-https.createServer(options, app).listen(443);
+// const io = require('socket.io')(server);
