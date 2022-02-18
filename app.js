@@ -24,6 +24,7 @@ const mysql = require('mysql');
 
 const { v4: uuidV4 } = require('uuid');
 const http = require('http');
+const https = require('https');
 const server = http.createServer(app);
 // const server = app.listen(port);
 const io = require('socket.io')(server);
@@ -35,6 +36,14 @@ app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
 // app.use(express.static('public'));
 
+
+const fs = require('fs');
+
+const options = { // letsencrypt로 받은 인증서 경로를 입력
+    ca: fs.readFileSync('/etc/letsencrypt/live/mait.shop/fullchain.pem'),
+    key: fs.readFileSync('/etc/letsencrypt/live/mait.shop/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/mait.shop/cert.pem')
+    };
 
 
 
@@ -285,3 +294,5 @@ app.post('study_log', (req, res) => {
 // });
 
 server.listen(port);
+
+https.createServer(options, app).listen(443);
