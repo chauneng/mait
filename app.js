@@ -95,10 +95,10 @@ app.use(bodyParser.json());
 
 
 app.get('/cam', (req, res) => {
-    res.redirect(`/${uuidV4()}`);
+    res.redirect(`/cam/${uuidV4()}`);
 });
 
-app.get('/:room', (req, res) => {
+app.get('/cam/:room', (req, res) => {
     const room_id = req.params.room
     res.render('room', { roomId: room_id });
   });
