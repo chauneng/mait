@@ -152,7 +152,9 @@ app.post('/stopwatch', (req, res) => {
 
 
 app.get('/mainpage', (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
+    let today = new Date();
+    today.setHours(today.getHours() + 9); 
+    today = today.toISOString().split('T')[0].substring(0, 19);
     const user_id = 1;
     const sql_1 = `SELECT
                         s.id,
@@ -238,13 +240,24 @@ app.get('/mainpage', (req, res) => {
 app.put('/subject/:id', (req, res) => {
     const id = req.params.id
     const body = req.body;
-    const color_id = body.colorId;
-    const name = body.name;
+    let name;
+    let color_id;
+    if (body.colorId === undefined | body.colorId === "") {
+        return res.status(400).send({message: "INVALID_COLOR"});
+    } else {
+        color_id = body.colorId;
+    }
+    if (body.name === undefined | body.name === "") {
+        return res.status(400).send({message: "INVALID_NAME"});
+    } else {
+        name = body.name;
+    }
     const user_id = 1; // 토큰에서 받기!!
-    const subject_check = `SELECT * FROM subjects WHERE user_id=${user_id} AND name="${name}"`
+    const subject_check = `SELECT id FROM subjects WHERE user_id=${user_id} AND name="${name}" AND id != ${id}`
     con.query(subject_check, (err, result) => {
         if(err) throw err;
         if (result != "") {
+            // console.log(result[0].id, "************")
             return res.status(400).send({message: "SUBJECT_EXISTS"});
         } else {
             const sql = `UPDATE subjects SET name = "${name}", color_code_id = ${color_id} WHERE id = ${id}`;
@@ -311,12 +324,29 @@ app.post('/subject', (req, res) => {
 });
 
 
+// app.post('/study_log', (req, res) => {
+//     const user_id = 1;
+//     let subject_id 
+//     if (req.body.subjectId === undefined | req.body.subjectId === "") {
+//         const create_sub = `INSERT INTO subjects(user_id, name, color_code_id) VALUES(${user_id}, "UNDEFINED", 1)`
+//     }
+//     console.log(req.body, "****");
+//     sql = `INSERT INTO study_durations(subject_id, user_id, start_time) VALUES(${subject_id}, ${user_id}, NOW());`
+//     con.query(sql, function(err, result) {
+//         if(err) throw err;
+//         db_index = result.insertId;
+//         console.log(db_index);
+//         return res.status(200).send({message: "SUCCESS", id: db_index})
+//     })
+// });
 
-app.post('/study_log', (req, res) => {
+
+app.post('/studytime', (req, res) => {
     const user_id = 1;
     const subject_id = req.body.subjectId
-    console.log(req.body, "****");
-    sql = `INSERT INTO study_durations(subject_id, user_id, start_time) VALUES(${subject_id}, ${user_id}, NOW());`
+    const start_time = req.body.startTime
+    console.log(req.body, "*****")
+    sql = `INSERT INTO study_durations(subject_id, user_id, start_time) VALUES(${subject_id}, ${user_id}, "${start_time}");`
     con.query(sql, function(err, result) {
         if(err) throw err;
         db_index = result.insertId;
@@ -326,10 +356,11 @@ app.post('/study_log', (req, res) => {
 });
 
 
-app.patch('/study_log/:id', (req, res) => {
+app.patch('/studytime/:id', (req, res) => {
     const user_id = 1;
     const study_duration_id = req.params.id;
-    sql = `UPDATE study_durations SET updated_at = NOW() WHERE id = ${study_duration_id};`
+    const end_time = req.body.endTime;
+    sql = `UPDATE study_durations SET updated_at = "${end_time}" WHERE id = ${study_duration_id};`
     con.query(sql, function(err, result) {
         if(err) throw err;
         return res.status(200).send({message: "SUCCESS"})
