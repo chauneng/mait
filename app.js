@@ -69,7 +69,7 @@ const con = mysql.createConnection({
     port: 3306,
     user: 'admin',
     password: 'jungle_emit',
-    database: 'emit_2',
+    database: 'emit',
     multipleStatements: true
 });
 
@@ -165,35 +165,111 @@ app.post('/stopwatch', (req, res) => {
 
 
 app.get('/mainpage', (req, res) => {
-    const sql_1 = 'SELECT s.id, s.name, s.color_code, sd.start_time, sd.updated_at FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id WHERE sd.user_id = 1;'
-    const sql_2 = 'SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = 1;'
+    const today = new Date().toISOString().split('T')[0];
+    const user_id = 1;
+    const sql_1 = `SELECT
+                        s.id,
+                        s.name,
+                        c.code as color,
+                        sd.start_time,
+                        sd.updated_at
+                    FROM study_durations AS sd 
+                    LEFT JOIN subjects AS s 
+                        ON sd.subject_id = s.id 
+                    LEFT JOIN colors AS c 
+                        ON c.id = s.color_code_id 
+                    WHERE (sd.user_id = ${user_id}) 
+                    AND (DATE_FORMAT(sd.start_time, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d") 
+                    OR DATE_FORMAT(sd.updated_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d"));`;
+    const sql_2 = `SELECT 
+                        t.content, 
+                        t.subject_id, 
+                        t.is_done FROM todos AS t 
+                    LEFT JOIN users AS u 
+                        ON u.id = ${user_id};`
     con.query(sql_1 + sql_2, function(err, result){
         if(err) {
             console.log("Error Execution :", err);
-            res.send("오류");
+            res.send("ERROR");
             throw err;
         };
+        con.end();
         const results ={}
-        let res_subject = result[0];
-        let res_todo = result[1];
-        results.subjects = result.map((data) => {
-            const {id, name, code, start_time, end_time, is_done, subject, } = data;
-            let calculatedTime = 0;
+        results.subjects = result[0].map((data) => {
+            const {id, name, color} = data;
+            let time = ((data["updated_at"]-data["start_time"])/1000);
             return {
-                id, 
+                id,
                 name,
-                color: code,
-                totalTime: calculatedTime
+                color,
+                totalTime: time
             }
-        });
-        results.todos = result[1]
-        console.log(results);
-        res.send({"subjects" : res_subject, "todos" : res_todo});
-
+        }).reduce((prev, curr) => {
+            const arr = [...prev];
+            const idx = prev.findIndex((elem) => elem.id === curr.id);
+            if (idx === -1) {
+              arr.push({
+                id: curr.id,
+                name: curr.name,
+                color: curr.color,
+                totalTime: curr.totalTime,
+              });
+            } else {
+              arr[idx].totalTime += curr.totalTime;
+            }
+            return arr;
+          }, []);
+          results.subjects = results.subjects.map((data) => {
+              const { id, name, color } = data;
+              let time = data["totalTime"];
+              let min = (time/60);
+              let hour = (min/60);
+              let sec = (time%60);
+              min = (min%60);
+              return {
+                id,
+                name,
+                color,
+                totalTime: `${parseInt(hour)}:${parseInt(min)}:${parseInt(sec)}`
+            }
+          }) 
+        res.send({"subjects" : results.subjects, "todos" : result[1]});
+        // con.end();
     });
-    con.end();
+    // con.end();
+});
 
-})
+
+// app.get('/mainpage', (req, res) => {
+//     const sql_1 = 'SELECT s.id, s.name, s.color_code, sd.start_time, sd.updated_at FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id WHERE sd.user_id = 1;'
+//     const sql_2 = 'SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = 1;'
+//     con.query(sql_1 + sql_2, function(err, result){
+//         if(err) {
+//             console.log("Error Execution :", err);
+//             res.send("오류");
+//             throw err;
+//         };
+//         const results ={}
+//         let res_subject = result[0];
+//         let res_todo = result[1];
+//         results.subjects = result.map((data) => {
+//             const {id, name, code, start_time, end_time, is_done, subject, } = data;
+//             let calculatedTime = 0;
+//             return {
+//                 id, 
+//                 name,
+//                 color: code,
+//                 totalTime: calculatedTime
+//             }
+//         });
+//         results.todos = result[1]
+//         console.log(results);
+//         res.send({"subjects" : res_subject, "todos" : res_todo});
+
+//     });
+//     con.end();
+
+// })
 
 
 // app.get('/mainpage', (req, res) => {
