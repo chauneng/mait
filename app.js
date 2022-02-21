@@ -1,4 +1,5 @@
 const express = require('express');
+const morgan = require('morgan');
 // const Router = require('./routers/index');
 
 const bodyParser = require('body-parser');
@@ -13,13 +14,6 @@ const port = 5000;
 const mysql = require('mysql');
 // const { builtinModules } = require('module');
 
-// const Pool = require('mysql/lib/Pool');
-// const con = mysql.createConnection({
-//     host: 'localhost',
-//     user: 'root',
-//     password: '12345',
-//     database: 'emit'
-// });
 
 
 const { v4: uuidV4 } = require('uuid');
@@ -39,6 +33,8 @@ const server = https.createServer(
     app
 );
 
+app.use(morgan("combined"));
+
 // const server = app.listen(port);
 const io = require('socket.io')(server);
 // const io = require('socket.io').listen(server);
@@ -50,15 +46,11 @@ app.use(express.static(__dirname + '/public'));
 // app.use(express.static('public'));
 
 
-
-
-// const fs = require('fs');
-
-const options = { // letsencrypt로 받은 인증서 경로를 입력
-    ca: fs.readFileSync('/etc/letsencrypt/live/mait.shop/fullchain.pem'),
-    key: fs.readFileSync('/etc/letsencrypt/live/mait.shop/privkey.pem'),
-    cert: fs.readFileSync('/etc/letsencrypt/live/mait.shop/cert.pem')
-    };
+// const options = { // letsencrypt로 받은 인증서 경로를 입력
+//     ca: fs.readFileSync('/etc/letsencrypt/live/mait.shop/fullchain.pem'),
+//     key: fs.readFileSync('/etc/letsencrypt/live/mait.shop/privkey.pem'),
+//     cert: fs.readFileSync('/etc/letsencrypt/live/mait.shop/cert.pem')
+//     };
 
 
 
@@ -117,33 +109,26 @@ socket.on('join-room', (roomId, userId) => {
 
 
 // const whitelist = ["*"];
-//app.use(cors());
-app.use(cors({
-    origin : "*",
-    credentials: true
-}
-));
-
-
-
-// app.get('/', (req, res) => {
-//     res.send('express start');
-// });
-
-
-
-app.post('/', (req, res) => {
-    const body = req.body;
-    console.log(body);
-});
-
+app.use(cors());
+// app.options('*', cors());
+// app.use(cors({
+//     origin : "*",
+//     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+//     credentials: true
+// }
+// ));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
+app.get('/', (req, res) => {
+    res.redirect('/mainpage');
+});
+
+
 app.get('/stopwatch', (req, res) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    // res.header("Access-Control-Allow-Origin", "*");
     const sql = 'SELECT sd.end_time, sd.start_time, s.name, sd.subject FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id WHERE sd.user_id = 1'
     con.query(sql, function (err, result, fields) {
         if (err) throw err;
@@ -151,6 +136,7 @@ app.get('/stopwatch', (req, res) => {
         res.send(result)
     });    
 });
+
 
 app.post('/stopwatch', (req, res) => {
     // res.header("Access-Control-Allow-Origin", "*");
@@ -164,44 +150,52 @@ app.post('/stopwatch', (req, res) => {
 });
 
 
+
 app.get('/mainpage', (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const user_id = 1;
     const sql_1 = `SELECT
                         s.id,
                         s.name,
-                        c.code as color,
+                        c.id as colorId,
                         sd.start_time,
                         sd.updated_at
                     FROM study_durations AS sd 
-                    LEFT JOIN subjects AS s 
+                    RIGHT JOIN subjects AS s 
                         ON sd.subject_id = s.id 
                     LEFT JOIN colors AS c 
                         ON c.id = s.color_code_id 
-                    WHERE (sd.user_id = ${user_id}) 
+                    WHERE (sd.user_id = ${user_id})
+                    AND (s.is_deleted = 0)
+                    AND (sd.updated_at IS NOT NULL)
                     AND (DATE_FORMAT(sd.start_time, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d") 
                     OR DATE_FORMAT(sd.updated_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d"));`;
     const sql_2 = `SELECT 
+                        t.id,
                         t.content, 
-                        t.subject_id, 
-                        t.is_done FROM todos AS t 
+                        t.subject_id AS subjectId, 
+                        t.is_done AS isDone
+                    FROM todos AS t 
                     LEFT JOIN users AS u 
-                        ON u.id = ${user_id};`
-    con.query(sql_1 + sql_2, function(err, result){
+                        ON u.id = ${user_id}
+                    WHERE DATE_FORMAT(t.created_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d");`;
+    const sql_3 = `SELECT * FROM colors;`;
+    const sql_4 = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0`;
+    con.query(sql_1 + sql_2 + sql_3+ sql_4, function(err, result){
         if(err) {
             console.log("Error Execution :", err);
             res.send("ERROR");
             throw err;
         };
-        con.end();
+        console.log(result[0])
         const results ={}
         results.subjects = result[0].map((data) => {
-            const {id, name, color} = data;
+            const {id, name, colorId} = data;
             let time = ((data["updated_at"]-data["start_time"])/1000);
             return {
                 id,
                 name,
-                color,
+                colorId,
                 totalTime: time
             }
         }).reduce((prev, curr) => {
@@ -211,7 +205,7 @@ app.get('/mainpage', (req, res) => {
               arr.push({
                 id: curr.id,
                 name: curr.name,
-                color: curr.color,
+                colorId: curr.colorId,
                 totalTime: curr.totalTime,
               });
             } else {
@@ -220,104 +214,73 @@ app.get('/mainpage', (req, res) => {
             return arr;
           }, []);
           results.subjects = results.subjects.map((data) => {
-              const { id, name, color } = data;
+              const { id, name, colorId } = data;
               let time = data["totalTime"];
               let min = (time/60);
               let hour = (min/60);
               let sec = (time%60);
               min = (min%60);
+              function pad(n, width) {
+                n = n + '';
+                return n.length >= width ? n : new Array(width - n.length + 1).join('0') + n;
+              }
               return {
                 id,
                 name,
-                color,
-                totalTime: `${parseInt(hour)}:${parseInt(min)}:${parseInt(sec)}`
+                colorId,
+                totalTime: `${pad(parseInt(hour), 2)}:${pad(parseInt(min), 2)}:${pad(parseInt(sec), 2)}`
             }
           }) 
-        res.send({"subjects" : results.subjects, "todos" : result[1]});
-        // con.end();
+        res.send({"study" : results.subjects, "todos" : result[1], "colors" : result[2], "subjects": result[3]});
     });
-    // con.end();
 });
 
-
-// app.get('/mainpage', (req, res) => {
-//     const sql_1 = 'SELECT s.id, s.name, s.color_code, sd.start_time, sd.updated_at FROM study_durations as sd LEFT JOIN subjects as s ON sd.subject = s.id WHERE sd.user_id = 1;'
-//     const sql_2 = 'SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = 1;'
-//     con.query(sql_1 + sql_2, function(err, result){
-//         if(err) {
-//             console.log("Error Execution :", err);
-//             res.send("오류");
-//             throw err;
-//         };
-//         const results ={}
-//         let res_subject = result[0];
-//         let res_todo = result[1];
-//         results.subjects = result.map((data) => {
-//             const {id, name, code, start_time, end_time, is_done, subject, } = data;
-//             let calculatedTime = 0;
-//             return {
-//                 id, 
-//                 name,
-//                 color: code,
-//                 totalTime: calculatedTime
-//             }
-//         });
-//         results.todos = result[1]
-//         console.log(results);
-//         res.send({"subjects" : res_subject, "todos" : res_todo});
-
-//     });
-//     con.end();
-
-// })
+app.put('/subject/:id', (req, res) => {
+    const id = req.params.id
+    const body = req.body;
+    const color_id = body.colorId;
+    const name = body.name;
+    const user_id = 1; // 토큰에서 받기!!
+    const subject_check = `SELECT * FROM subjects WHERE user_id=${user_id} AND name="${name}"`
+    con.query(subject_check, (err, result) => {
+        if(err) throw err;
+        if (result != "") {
+            return res.status(400).send({message: "SUBJECT_EXISTS"});
+        } else {
+            const sql = `UPDATE subjects SET name = "${name}", color_code_id = ${color_id} WHERE id = ${id}`;
+            con.query(sql, (err, result) => {
+            if(err) throw err;
+            return res.status(200).send({message: "SUCCESS"});
+            })
+        }
+    })
+})
 
 
-// app.get('/mainpage', (req, res) => {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     const result = {};
-//     const sql = 'SELECT s.id, s.name, c.code, sd.start_time, sd.end_time, t.content, t.subject_id, t.is_done FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id LEFT JOIN colors as c ON c.id = s.color_id LEFT JOIN todos as t ON sd.user_id = t.user_id WHERE sd.user_id = 1'
-//     con.query(sql, function (err, result, fields) {
-//         if (err) throw err;
-//         const results = {}
-//         results.subjects = result.map((data) => {
-//             const {id, name, code, start_time, end_time, is_done, subject, } = data;
-//             let calculatedTime = 0;
-//             return {
-//                 id, 
-//                 name,
-//                 color: code,
-//                 totalTime: calculatedTime
-//             }
-//         })
-
-//         // console.log(results, "results");
-//         result = [results];
-//         const sql_todo = `SELECT t.content, t.subject_id, t.is_done FROM todos AS t LEFT JOIN users AS u ON u.id = t.user_id WHERE u.id = 1`
-//         console.log(result, "result")
-//         res.send(JSON.stringify(result));
-//     })
-//     console.log(result, "***");
-    
-// });
-
-
+app.delete('/subject/:id', (req, res) => {
+    const id = req.params.id;
+    con.query(`UPDATE subjects SET is_deleted = 1 WHERE id = ${id};`, function(err, result) {
+        if(err) throw err;
+        console.log(result);
+        res.status(200).send({message: "SUCCESS"})
+    })
+})
 
 
 app.post('/subject', (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
+    console.log(req.body)
     const body = req.body;
     const user_id = 1; // 토큰에서 가져오기!
+    if (body.subject === undefined | body.subject === "") {
+        return res.status(401).send( {message: "NO_SUBJECT_PROVIDED"} )
+    }
     const subject_name = body.subject; // request.get.body ?
-    const color_code= body.colorCode;
-    console.log(body);
-
-    if (color_code == "") {
-         res.status(401).send( {message: "NO_COLOR_SELECTED"}) 
-    } else if (color_code.length < 6) {
-        res.status(401).send( {message: "INVALID_COLOR"} )
-    };
-
-    con.query(`SELECT * FROM subjects WHERE user_id = ${user_id} AND name = "${subject_name}"`, function(err, result) {
+    if (body.colorId === undefined) {
+        return res.status(401).send( {message: "NO_COLOR_SELECTED"} ) 
+    } 
+    const color_id = body.colorId;
+    con.query(`SELECT * FROM subjects WHERE user_id = ${user_id} AND name = "${subject_name}" AND is_deleted = 0`, function(err, result) {
         if (err) {
             console.log("ERROR Execution: ", err);
             res.send("ERROR");
@@ -325,9 +288,9 @@ app.post('/subject', (req, res) => {
         }
         console.log("result", result)
         if (result != "") { 
-            res.status(401).send( {message: "SUBJECT_EXISTS"} )
+            return res.status(401).send( {message: "SUBJECT_EXISTS"} )
         } else {
-            const sql = `INSERT INTO subjects(user_id, name, color_code) VALUES (1, "${subject_name}", "${color_code}")`;
+            const sql = `INSERT INTO subjects(user_id, name, color_code_id) VALUES (${user_id}, "${subject_name}", "${color_id}")`;
             console.log(sql);
             con.query(sql, function(err, result, fields) {
                 if(err) throw err;
@@ -335,51 +298,44 @@ app.post('/subject', (req, res) => {
                 db_index = result.insertId;
                 console.log(db_index);
 
-                const sub_sql = `SELECT id, name, color_code as colorCode FROM subjects WHERE id = ${db_index}`;
+                const sub_sql = `SELECT id, name, color_code_id as colorId FROM subjects WHERE id = ${db_index}`;
                 con.query(sub_sql, function (err, result, fields) {
                     if (err) throw err;
                     console.log(err);
-                    res.send(...result)
+                    console.log(...result);
+                    return res.send(...result)
                 })
             })
         }
-    });
-    
-    // const sql = `INSERT INTO subjects(user_id, name, color_code) VALUES (1, "${subject_name}", "${color_code}")`;
-    // console.log(sql);
-    // con.query(sql, function(err, result, fields) {
-    //     if(err) throw err;
-
-    //     db_index = result.insertId;
-    //     console.log(db_index);
-
-    //     const sub_sql = `SELECT id, name, color_code as colorCode FROM subjects WHERE id = ${db_index}`;
-    //     con.query(sub_sql, function (err, result, fields) {
-    //         if (err) throw err;
-    //         console.log(err);
-
-    //     res.send(...result)
-    // });  
-    // });
-
-    // const sub_sql = `SELECT s.id, s.name, c.code FROM subjects AS s LEFT JOIN colors AS c ON c.id = s.color_id WHERE s.id = ${db_index}`;
-    // console.log("*****");
-    // con.query(sub_sql, function (err, result, fields) {
-    //     if (err) throw err;
-    //     console.log(err);
-    //     res.send(result)
-    // });  
+    }) 
 });
 
 
-// app.get('/statistics', (req, res) => {
-//     const body =
-// })
+
+app.post('/study_log', (req, res) => {
+    const user_id = 1;
+    const subject_id = req.body.subjectId
+    console.log(req.body, "****");
+    sql = `INSERT INTO study_durations(subject_id, user_id, start_time) VALUES(${subject_id}, ${user_id}, NOW());`
+    con.query(sql, function(err, result) {
+        if(err) throw err;
+        db_index = result.insertId;
+        console.log(db_index);
+        return res.status(200).send({message: "SUCCESS", id: db_index})
+    })
+});
 
 
-app.post('study_log', (req, res) => {
-    
-})
+app.patch('/study_log/:id', (req, res) => {
+    const user_id = 1;
+    const study_duration_id = req.params.id;
+    sql = `UPDATE study_durations SET updated_at = NOW() WHERE id = ${study_duration_id};`
+    con.query(sql, function(err, result) {
+        if(err) throw err;
+        return res.status(200).send({message: "SUCCESS"})
+    })
+});
+
 
 
 app.listen(port, () => {
