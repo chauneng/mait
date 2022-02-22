@@ -392,6 +392,29 @@ app.get('/statistics/edit/', (req, res) => {
     })
 })
 
+app.patch('/statistics/:id', (req, res) => {
+    const user_id = 1;
+    const start_time = req.body.startTime;
+    const updated_at = req.body.endTime;
+    const id = req.params.id;
+    sql = `UPDATE study_durations SET start_time = "${start_time}", updated_at = "${updated_at}" WHERE id=${id} AND user_id = ${user_id};`
+    con.query(sql, (err, result) => {
+        if(err) throw err;
+        console.log(result, "*****")
+        return res.status(200).send({message: "SUCCESS"})
+    })
+})
+
+
+app.delete('/statistics/:id', (req, res) => {
+    const user_id = 1;
+    const id = req.params.id;
+    sql = `DELETE from study_durations WHERE id = ${id} AND user_id = ${user_id};`
+    con.query(sql, (err, result) => {
+        if(err) throw err;
+        return res.status(204).send()
+    })
+})
 
 
 
