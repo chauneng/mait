@@ -382,8 +382,10 @@ app.patch('/studytime/:id', (req, res) => {
 
 app.get('/statistics/edit/', (req, res) => {
     const user_id = 1 /////
-    const date = req.body.date
-    sql = `SELECT id, subject_id, start_time, updated_at FROM study_durations WHERE user_id = ${user_id} AND updated_at is NOT NULL;`
+    // const date = req.body.date
+    const date = "2022-02-21"
+    sql = `SELECT id, subject_id, start_time, updated_at FROM study_durations WHERE user_id = ${user_id} AND updated_at is NOT NULL
+    AND(DATE_FORMAT(updated_at, "%Y-%m-%d") = STR_TO_DATE("${date}", "%Y-%m-%d") OR DATE_FORMAT(start_time, "%Y-%m-%d") = STR_TO_DATE("${date}", "%Y-%m-%d"));`
     con.query(sql, function(err, result) {
         if(err) throw err;
         return res.status(200).send({message: "SUCCESS", result: result})
