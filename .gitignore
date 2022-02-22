@@ -2,6 +2,11 @@
 # Created by https://www.toptal.com/developers/gitignore/api/macos,react,node,database
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,react,node,database
 
+
+.env
+
+
+
 ### Database ###
 *.accdb
 *.db
