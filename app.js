@@ -127,27 +127,27 @@ app.get('/', (req, res) => {
 });
 
 
-app.get('/stopwatch', (req, res) => {
-    // res.header("Access-Control-Allow-Origin", "*");
-    const sql = 'SELECT sd.end_time, sd.start_time, s.name, sd.subject FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id WHERE sd.user_id = 1'
-    con.query(sql, function (err, result, fields) {
-        if (err) throw err;
-        console.log(err);
-        res.send(result)
-    });    
-});
+// app.get('/stopwatch', (req, res) => {
+//     // res.header("Access-Control-Allow-Origin", "*");
+//     const sql = 'SELECT sd.end_time, sd.start_time, s.name, sd.subject FROM study_durations as sd LEFT JOIN subjects as s ON  sd.subject = s.id WHERE sd.user_id = 1'
+//     con.query(sql, function (err, result, fields) {
+//         if (err) throw err;
+//         console.log(err);
+//         res.send(result)
+//     });    
+// });
 
 
-app.post('/stopwatch', (req, res) => {
-    // res.header("Access-Control-Allow-Origin", "*");
-    const body = req.body;
-    const sql = `INSERT INTO study_durations(subject, user_id, start_time, end_time, created_at) VALUES (${body.subject}, ${body.user_id}, ${body.start_time}, ${body.end_time}, NOW())`;
-    console.log(sql);
-    con.query(sql, function(err, result, fields) {
-        if(err) throw err;
-        res.send('success')
-    });
-});
+// app.post('/stopwatch', (req, res) => {
+//     // res.header("Access-Control-Allow-Origin", "*");
+//     const body = req.body;
+//     const sql = `INSERT INTO study_durations(subject, user_id, start_time, end_time, created_at) VALUES (${body.subject}, ${body.user_id}, ${body.start_time}, ${body.end_time}, NOW())`;
+//     console.log(sql);
+//     con.query(sql, function(err, result, fields) {
+//         if(err) throw err;
+//         res.send('success')
+//     });
+// });
 
 
 
@@ -324,6 +324,17 @@ app.post('/subject', (req, res) => {
 });
 
 
+app.delete('/todos/:id', (req, res) => {
+    //const user_id = // 쿼리 수정
+    const id = req.params.id;
+    con.query(`DELETE FROM todos WHERE id = ${id};`, function(err, result) {
+        if(err) throw err;
+        // console.log(result);
+        return res.status(200).send({message: "SUCCESS"})
+    })
+})
+
+
 // app.post('/study_log', (req, res) => {
 //     const user_id = 1;
 //     let subject_id 
@@ -366,6 +377,20 @@ app.patch('/studytime/:id', (req, res) => {
         return res.status(200).send({message: "SUCCESS"})
     })
 });
+
+
+
+app.get('/statistics/edit/', (req, res) => {
+    const user_id = 1 /////
+    const date = req.body.date
+    sql = `SELECT id, subject_id, start_time, updated_at FROM study_durations WHERE user_id = ${user_id} AND updated_at is NOT NULL;`
+    con.query(sql, function(err, result) {
+        if(err) throw err;
+        return res.status(200).send({message: "SUCCESS", result: result})
+    })
+})
+
+
 
 
 
