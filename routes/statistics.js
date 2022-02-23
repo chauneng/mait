@@ -7,7 +7,7 @@ const dbconfig = require('../config/database');
 
 // const pool = mysql.createPool(dbconfig);
 const router = express.Router();
-const connection = mysql.createConnection(dbconfig);
+const con = mysql.createConnection(dbconfig);
 
 
 // 다른 파일로 빼도 좋을 것 같습니다. 여기부터
@@ -207,7 +207,7 @@ router.get('/daily', async (req, res) => {
     AND (date_format(sd.updated_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d") 
     OR date_format(sd.start_time, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d"));`;
     const sql2 = `SELECT subjects.id, subjects.name, colors.code FROM emit.subjects JOIN colors ON subjects.color_code_id = colors.id WHERE subjects.user_id = ${parseInt(userInfo.id, 10)};`
-    connection.query(sql + sql2, (err, row) => {
+    con.query(sql + sql2, (err, row) => {
       if (err) throw err;
       return res.json(rowsToDailyResponseData(row, today));
     });
@@ -248,7 +248,7 @@ router.get('/period', async (req, res) => {
       AND ((sd.start_time >= STR_TO_DATE("${startDate}", "%Y-%m-%d") AND sd.start_time < STR_TO_DATE("${realEndDate}", "%Y-%m-%d"))
       OR (sd.updated_at >= STR_TO_DATE("${startDate}", "%Y-%m-%d") AND sd.updated_at < STR_TO_DATE("${realEndDate}", "%Y-%m-%d")));`;
      // await connection.query(sql, async (err, row) => {
-    connection.query(subjectQ + todoQ + timeQ, async (err, row) => {
+    con.query(subjectQ + todoQ + timeQ, async (err, row) => {
       if (err) throw err;
       const [subjectRow, todoRow, timeRow] = row;
       timeRow.forEach(item => {

@@ -1,13 +1,13 @@
 const express = require('express');
+const router = express.Router();
 const mysql = require('mysql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dbconfig = require('../config/database');
-
-const router = express.Router();
 const connection = mysql.createConnection(dbconfig);
 // const jwt = require('../modules/jwt');
 const { verifyToken } = require('./middleware');
+
 
 router.get('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
@@ -18,8 +18,11 @@ router.get('/signout', verifyToken, (req, res) => {
   res.clearCookie('x_auth').json({ message: 'success' });
 });
 
+
 router.post('/signin', async (req, res, next) => {
+  console.log("*****")
   console.log(req.headers);
+  res.header("ACCESS-Control-Allow-Origin", "https://maitapp.click");
   const { username, password } = req.body;
   try {
     // console.log(req.body.id);
@@ -45,7 +48,8 @@ router.post('/signin', async (req, res, next) => {
           return res.cookie(
             'x_auth',
             { accessToken },
-            { maxAge: 31536000, path: '/', domain: 'localhost', sameSite: 'Lax', httpOnly: true },
+            // { maxAge: 31536000, path: '/', domain: 'https://mait.shop', sameSite: 'Lax', httpOnly: true }
+            { maxAge: 31536000, domain: 'https://mait.shop', sameSite: 'none', httpOnly: true, secure: true }
           ).json({ message: 'success', accessToken });
         }
       }

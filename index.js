@@ -9,6 +9,7 @@ const todosRouter = require('./routes/todos');
 const statisticsRouter = require('./routes/statistics');
 const authRouter = require('./routes/auth');
 const pageRouter = require('./routes/page');
+const testRouter = require('./routes/test'); ////////////
 const { v4: uuidV4 } = require('uuid');
 const http = require('http');
 const https = require('https');
@@ -57,7 +58,7 @@ const connection = mysql.createConnection(dbconfig);
 // const jwt = require('./modules/jwt');
 
 const corsOptions = {
-  origin: '*',
+  origin: 'https://maitapp.click',
   credentials: true,
 };
 
@@ -69,10 +70,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser(process.env.COOKEY_SECRET_KEY));
 
+
 app.use('/', pageRouter);
 app.use('/todos', todosRouter);
 app.use('/statistics', statisticsRouter);
 app.use('/auth', authRouter);
+
+app.use('/test', testRouter);
 
 app.set('view engine', 'ejs');
 app.engine('html', require('ejs').renderFile);

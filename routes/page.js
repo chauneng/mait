@@ -4,19 +4,6 @@ const mysql = require('mysql');
 const dbconfig = require('../config/database');
 const con = mysql.createConnection(dbconfig);
 
-// const con = mysql.createConnection({
-//     host: 'emit.chjtdqatvvwb.ap-northeast-2.rds.amazonaws.com',
-//     port: 3306,
-//     user: 'admin',
-//     password: "12345",
-//     database: 'emit',
-//     multipleStatements: true
-//   });
-  
-//   con.connect(function(err) {
-//       if (err) throw err;
-//       console.log('Connected');
-//   });
 
 
 router.get('/', (req, res) => {
