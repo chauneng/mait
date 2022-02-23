@@ -60,7 +60,7 @@ const con = mysql.createConnection({
     host: 'emit.chjtdqatvvwb.ap-northeast-2.rds.amazonaws.com',
     port: 3306,
     user: 'admin',
-    password: 'jungle_emit',
+    password: '12345',
     database: 'emit',
     multipleStatements: true
 });
@@ -69,15 +69,6 @@ const con = mysql.createConnection({
 con.connect(function(err) {
     if (err) throw err;
     console.log('Connected');
-    // con.query('CREATE DATABASE express_db', function (err, result) {
-    // if (err) throw err; 
-    //     console.log('database created');
-    // });
-    // const sql = 'query';
-    // con.query(sql, function (err, result) {
-    //     if (err) throw err;
-    //     console.log('table created')
-    // });
 });
 
 

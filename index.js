@@ -12,6 +12,7 @@ const pageRouter = require('./routes/page');
 const { v4: uuidV4 } = require('uuid');
 const http = require('http');
 const https = require('https');
+const app = express();
 const fs = require('fs');
 const server = https.createServer(
     {
@@ -27,11 +28,22 @@ const server = https.createServer(
 const io = require('socket.io')(server);
 app.set('view engine', 'ejs');
 app.use(express.static(__dirname + '/public'));
+
+const con = mysql.createConnection({
+  host: 'emit.chjtdqatvvwb.ap-northeast-2.rds.amazonaws.com',
+  port: 3306,
+  user: 'admin',
+  password: "12345",
+  database: 'emit',
+  multipleStatements: true
+});
+
 con.connect(function(err) {
     if (err) throw err;
     console.log('Connected');
 });
 
+const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
 
@@ -43,7 +55,6 @@ const { verifyToken } = require('./routes/middleware');
 
 const connection = mysql.createConnection(dbconfig);
 // const jwt = require('./modules/jwt');
-const app = express();
 
 const corsOptions = {
   origin: '*',
@@ -89,18 +100,18 @@ socket.on('join-room', (roomId, userId) => {
 });
 
 
-app.use((req, res, next) => {
-  const error = new Error(`${req.method} ${req.url} 라우터가 없습니다.`);
-  error.status = 404;
-  next(error);
-});
+// app.use((req, res, next) => {
+//   const error = new Error(`${req.method} ${req.url} 라우터가 없습니다.`);
+//   error.status = 404;
+//   next(error);
+// });
 
-app.use((err, req, res, next) => {
-  res.locals.message = err.message;
-  res.locals.error = process.env.NODE_ENV !== 'production' ? err : {};
-  res.status(err.status || 500);
-  res.render('error');
-});
+// app.use((err, req, res, next) => {
+//   res.locals.message = err.message;
+//   res.locals.error = process.env.NODE_ENV !== 'production' ? err : {};
+//   res.status(err.status || 500);
+//   res.render('error');
+// });
 
 // app.listen(app.get('port'), () => {
 //   console.log(`Express server listening on port ${app.get('port')}`);

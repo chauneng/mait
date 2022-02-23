@@ -14,7 +14,7 @@ module.exports = {
   host: 'emit.chjtdqatvvwb.ap-northeast-2.rds.amazonaws.com',
   port: '3306',
   user: 'admin',
-  password: 'jungle_emit',
+  password: '12345',
   database: 'emit',
   multipleStatements: true,
 };

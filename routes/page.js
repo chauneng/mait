@@ -1,5 +1,29 @@
 const express = require('express');
 const router = express.Router();
+const mysql = require('mysql');
+const dbconfig = require('../config/database');
+const con = mysql.createConnection(dbconfig);
+
+// const con = mysql.createConnection({
+//     host: 'emit.chjtdqatvvwb.ap-northeast-2.rds.amazonaws.com',
+//     port: 3306,
+//     user: 'admin',
+//     password: "12345",
+//     database: 'emit',
+//     multipleStatements: true
+//   });
+  
+//   con.connect(function(err) {
+//       if (err) throw err;
+//       console.log('Connected');
+//   });
+
+
+router.get('/', (req, res) => {
+    return res.redirect('/mainpage');
+})
+
+
 
 router.get('/mainpage', (req, res) => {
   let today = new Date();
