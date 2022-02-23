@@ -60,7 +60,7 @@ router.post('/signup', (req, res, next) => {
     username, password, nickname, email,
   } = req.body;
   const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (!username) return res.json({ message: 'Empty IDfield' });
+  if (!username) return res.status(400).json({ message: 'Empty IDfield' });
   if (username.length > 16) return res.json({ message: 'Too long id' });
   if (password.length < 4) return res.json({ message: 'Invalid password' });
   if (!nickname) return res.json({ message: 'Empty nickname' });
