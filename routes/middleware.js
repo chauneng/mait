@@ -36,25 +36,34 @@ exports.isNotLoggedIn = (req, res, next) => {
 
 
 exports.verifyToken = (req, res, next) => {
-  // console.log(req.headers["authorization"], "authorization");
-  // console.log(req.cookies.x_auth.accessToken);
-  // try {
-    // req.decoded = jwt.verify(req.cookies.x_auth.accessToken, process.env.JWT_SECRET_KEY);
+  try {
+    console.log(1, req.heaers["authorization"]);
     const accessToken = req.headers["authorization"];
-    // console.log(accessToken);
+    console.log(2);
     const { userInfo } = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
-    // console.log(userInfo.id, "userInfo");
     const findtoken = `SELECT token FROM users WHERE id = ${parseInt(userInfo.id, 10)};`;
-  // try {
     con.query(findtoken, (err, result) => {
       if (err) throw err;
-      // console.log(result[0].token, "result token");
       if (result[0].token === accessToken) {
         req.decoded = jwt.verify(result[0].token, process.env.JWT_SECRET_KEY);
         console.log("SUCCESS!!!!!!!!!!!!!!!", userInfo);
         return next();
       }
     })
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(419).json({
+        code: 419,
+        message: 'Token Expired',
+      });
+      // return res.redirect('/refresh');
+    }
+    return res.status(401).json({
+      code: 401,
+      message: 'unaurthorized',
+    });
+  };
+};
     // con.query(findtoken, async (err, row) => {
     //   if (err) throw err;
     //   await row.map((item) => {
@@ -74,20 +83,20 @@ exports.verifyToken = (req, res, next) => {
     //   // req.decoded = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
     // });
     // // console.log(req.decoded);
-  // } catch (error) {
-  //   if (error.name === 'TokenExpiredError') {
-  //     return res.status(419).json({
-  //       code: 419,
-  //       message: 'Token Expired',
-  //     });
-  //     // return res.redirect('/refresh');
-  //   }
-  //   return res.status(401).json({
-  //     code: 401,
-  //     message: 'unaurthorized 123',
-  //   });
-  // }
-};
+//   } catch (error) {
+//     if (error.name === 'TokenExpiredError') {
+//       return res.status(419).json({
+//         code: 419,
+//         message: 'Token Expired',
+//       });
+//       // return res.redirect('/refresh');
+//     }
+//     return res.status(401).json({
+//       code: 401,
+//       message: 'unaurthorized 123',
+//     });
+//   }
+// };
 
 // exports.verifyToken = (req, res, next) => {
 //   console.log(req.cookies);

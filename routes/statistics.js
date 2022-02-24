@@ -187,10 +187,12 @@ function makeSubjectTotalTime(timeRow, startDate, endDate) {
 }
 // 다른 파일로 빼도 좋을 것 같습니다. 여기까지 
 
-router.get('/daily', async (req, res) => {
+router.get('/daily', verifyToken, async (req, res) => {
   // router.get('/daily', verifyToken, async (req, res) => {
-  // const { userInfo } = req.decoded;
-  const userInfo = {id: 1}
+  const { userInfo } = req.decoded;
+  // const userInfo = {id: 1}
+  // const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const { today } = req.query;
   console.log(today);
   
@@ -219,10 +221,10 @@ router.get('/daily', async (req, res) => {
   }
 });
 
-// router.get('/period', verifyToken, async (req, res) => {
-router.get('/period', async (req, res) => {
-  // const { userInfo } = req.decoded;
-  const userInfo = {id:1}
+router.get('/period', verifyToken, async (req, res) => {
+// router.get('/period', async (req, res) => {
+  const { userInfo } = req.decoded;
+  // const userInfo = {id:1}
   const { startDate, endDate } = req.query;
   console.log(req.query);
   const [endYear, endMonth, endDay] = endDate.split('-').map(item => parseInt(item));
@@ -271,10 +273,11 @@ router.get('/period', async (req, res) => {
   }
 });
 
-router.get('/edit', (req, res) => {
-  const user_id = 1 /////
-  // const date = req.body.date
-  const date = "2022-02-21"
+router.get('/edit', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
+  const date = req.body.date /// 키값 확인
+  // const date = "2022-02-21"
   sql = `SELECT id, subject_id, start_time, updated_at FROM study_durations WHERE user_id = ${user_id} AND updated_at is NOT NULL
   AND(DATE_FORMAT(updated_at, "%Y-%m-%d") = STR_TO_DATE("${date}", "%Y-%m-%d") OR DATE_FORMAT(start_time, "%Y-%m-%d") = STR_TO_DATE("${date}", "%Y-%m-%d"));`
   con.query(sql, function(err, result) {
@@ -283,22 +286,23 @@ router.get('/edit', (req, res) => {
   })
 })
 
-router.patch('/:id', (req, res) => {
-  const user_id = 1;
+router.patch('/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const start_time = req.body.startTime;
   const updated_at = req.body.endTime;
   const id = req.params.id;
   sql = `UPDATE study_durations SET start_time = "${start_time}", updated_at = "${updated_at}" WHERE id=${id} AND user_id = ${user_id};`
   con.query(sql, (err, result) => {
       if(err) throw err;
-      console.log(result, "*****")
       return res.status(200).send({message: "SUCCESS"})
   })
 })
 
 
-router.delete('/:id', (req, res) => {
-  const user_id = 1;
+router.delete('/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const id = req.params.id;
   sql = `DELETE from study_durations WHERE id = ${id} AND user_id = ${user_id};`
   con.query(sql, (err, result) => {

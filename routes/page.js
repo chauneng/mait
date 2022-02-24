@@ -14,13 +14,11 @@ router.get('/', (req, res) => {
 
 
 router.get('/mainpage', verifyToken, (req, res) => {
-//   console.log(req.headers['authorization'], "**************")
-  const { userInfo } = req.decoded;
-  console.log(userInfo, "USERINFO");
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   let today = new Date();
   today.setHours(today.getHours() + 9); 
   today = today.toISOString().split('T')[0].substring(0, 19);
-  const user_id = 1;
   const sql_1 = `SELECT
                       s.id,
                       s.name,
@@ -102,7 +100,9 @@ router.get('/mainpage', verifyToken, (req, res) => {
   });
 });
 
-router.put('/subject/:id', (req, res) => {
+router.put('/subject/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const id = req.params.id
   const body = req.body;
   let name;
@@ -117,11 +117,10 @@ router.put('/subject/:id', (req, res) => {
   } else {
       name = body.name;
   }
-  const user_id = 1; // 토큰에서 받기!!
   const subject_check = `SELECT id FROM subjects WHERE user_id=${user_id} AND name="${name}" AND id != ${id}`
   con.query(subject_check, (err, result) => {
       if(err) throw err;
-      if (result != "") {
+      if (result != "") { ///// if (result) ??
           // console.log(result[0].id, "************")
           return res.status(400).send({message: "SUBJECT_EXISTS"});
       } else {
@@ -135,9 +134,11 @@ router.put('/subject/:id', (req, res) => {
 })
 
 
-router.delete('/subject/:id', (req, res) => {
+router.delete('/subject/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const id = req.params.id;
-  con.query(`UPDATE subjects SET is_deleted = 1 WHERE id = ${id};`, function(err, result) {
+  con.query(`UPDATE subjects SET is_deleted = 1 WHERE id = ${id} AND user_id = ${user_id};`, function(err, result) {
       if(err) throw err;
       console.log(result);
       res.status(200).send({message: "SUCCESS"})
@@ -145,11 +146,12 @@ router.delete('/subject/:id', (req, res) => {
 })
 
 
-router.post('/subject', (req, res) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  console.log(req.body)
+router.post('/subject', verifyToken, (req, res) => {
+//   res.header("Access-Control-Allow-Origin", "*");
+//   console.log(req.body)
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const body = req.body;
-  const user_id = 1; // 토큰에서 가져오기!
   if (body.subject === undefined | body.subject === "") {
       return res.status(401).send( {message: "NO_SUBJECT_PROVIDED"} )
   }
@@ -188,8 +190,9 @@ router.post('/subject', (req, res) => {
   }) 
 });
 
-router.post('/studytime', (req, res) => {
-  const user_id = 1;
+router.post('/studytime', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const subject_id = req.body.subjectId
   const start_time = req.body.startTime
   console.log(req.body, "*****")
@@ -203,8 +206,9 @@ router.post('/studytime', (req, res) => {
 });
 
 
-router.patch('/studytime/:id', (req, res) => {
-  const user_id = 1;
+router.patch('/studytime/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const study_duration_id = req.params.id;
   const end_time = req.body.endTime;
   sql = `UPDATE study_durations SET updated_at = "${end_time}" WHERE id = ${study_duration_id};`
