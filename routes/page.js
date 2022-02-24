@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql');
 const dbconfig = require('../config/database');
+const { verifyToken } = require('./middleware');
 const con = mysql.createConnection(dbconfig);
 
 
@@ -12,7 +13,10 @@ router.get('/', (req, res) => {
 
 
 
-router.get('/mainpage', (req, res) => {
+router.get('/mainpage', verifyToken, (req, res) => {
+//   console.log(req.headers['authorization'], "**************")
+  const { userInfo } = req.decoded;
+  console.log(userInfo, "USERINFO");
   let today = new Date();
   today.setHours(today.getHours() + 9); 
   today = today.toISOString().split('T')[0].substring(0, 19);
@@ -50,7 +54,7 @@ router.get('/mainpage', (req, res) => {
           res.send("ERROR");
           throw err;
       };
-      console.log(result[0])
+    //   console.log(result[0])
       const results ={}
       results.subjects = result[0].map((data) => {
           const {id, name, colorId} = data;

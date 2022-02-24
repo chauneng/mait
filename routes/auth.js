@@ -20,10 +20,10 @@ router.get('/signout', verifyToken, (req, res) => {
 });
 
 
-router.post('/signin', verifyToken, async (req, res, next) => {
-  console.log("*****")
-  console.log(userInfo, "******")
-  console.log(req.headers);
+router.post('/signin', async (req, res, next) => {
+  // console.log("*****")
+  // console.log(userInfo, "******")
+  // console.log(req.headers);
   res.header("ACCESS-Control-Allow-Origin", "https://maitapp.click");
   const { username, password } = req.body;
   try {
@@ -45,6 +45,7 @@ router.post('/signin', verifyToken, async (req, res, next) => {
           };
           // console.log(User);
           const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
+          console.log(accessToken, "CREATE ACCESS TOKEN");
           await connection.query(`UPDATE users SET token = "${accessToken}" WHERE username = "${User.username}";`);
           // const refreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
           return res.cookie(

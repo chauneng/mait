@@ -22,14 +22,17 @@ function msToHmsFormat(time) {
   return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-function toKoreaTimeZone(date){
-  date.setHours(date.getHours() + 9); 
-}
+// function toKoreaTimeZone(date){
+//   date.setHours(date.getHours() + 9); 
+// }
 
 function rowsToDailyResponseData(rows, today) {
+  // console.log(rows, "*****");
   const dateOfToday = new Date(`${today}T00:00:00`);
+  // console.log(dateOfToday, "dateoftoday");///
   const dateOfTomorrow = new Date(`${today}T00:00:00`);
   dateOfTomorrow.setDate(dateOfTomorrow.getDate() + 1);
+  // console.log((dateOfTomorrow), "******");//
   const [userLog, subjects] = rows; 
   const rangeTimeRaw = userLog
   .map(item => {
@@ -47,8 +50,8 @@ function rowsToDailyResponseData(rows, today) {
   const rangeTime = rangeTimeRaw.map(item => {
     const startTime = new Date(item.startTime.getTime());
     const endTime = new Date(item.endTime.getTime());
-    toKoreaTimeZone(startTime);
-    toKoreaTimeZone(endTime);
+    // toKoreaTimeZone(startTime);
+    // toKoreaTimeZone(endTime);
     return {...item, startTime:dateToReturnFormat(startTime), endTime:dateToReturnFormat(endTime)}
   })
   
@@ -137,7 +140,7 @@ function getDayTotalTime(timeRow, day) {
 function splitTimeRow(timeRow) {
   return timeRow.flatMap(item => {
     const startDate = new Date(item.start_time.getTime());
-    toKoreaTimeZone(startDate);
+    // toKoreaTimeZone(startDate);
     const today = dateToReturnFormat(startDate).substring(0, 10);
     const splitPoint = new Date(`${today}T00:00:00`);
     splitPoint.setDate(splitPoint.getDate() + 1);
@@ -175,7 +178,7 @@ function makeSubjectTotalTime(timeRow, startDate, endDate) {
   timeRow = splitTimeRow(timeRow);
   while(startDateObj <= endDateObj){
     const currentDate = new Date(startDateObj.getTime())
-    toKoreaTimeZone(currentDate);
+    // toKoreaTimeZone(currentDate);
     const dateKey = dateToReturnFormat(currentDate).substring(0, 10);
     returnObj[dateKey] = getDayTotalTime(timeRow, startDateObj);
     startDateObj.setDate(startDateObj.getDate() + 1);
@@ -221,10 +224,10 @@ router.get('/period', async (req, res) => {
   // const { userInfo } = req.decoded;
   const userInfo = {id:1}
   const { startDate, endDate } = req.query;
-  
+  console.log(req.query);
   const [endYear, endMonth, endDay] = endDate.split('-').map(item => parseInt(item));
   const endDateObj = new Date(endYear, endMonth - 1, endDay);
-  toKoreaTimeZone(endDateObj);
+  // toKoreaTimeZone(endDateObj);
   endDateObj.setDate(endDateObj.getDate() + 1);
   const realEndDate = dateToReturnFormat(endDateObj).substring(0, 10)
   try {
