@@ -4,7 +4,7 @@
   "description": "익스프레스 연습",
   "main": "app.js",
   "scripts": {
-    "start": "npx nodemon -e js,html app.js",
+    "start": "npx nodemon -e js,html index.js",
     "dev": "nodemon app.js"
   },
   "keywords": [],

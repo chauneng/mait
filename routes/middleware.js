@@ -27,17 +27,31 @@ exports.isNotLoggedIn = (req, res, next) => {
   }
 };
 
+
+
 exports.verifyToken = (req, res, next) => {
-  // console.log(req.headers);
-  console.log(req.cookies);
+  console.log(req.headers.authorization);
+  // console.log(req.cookies.x_auth.accessToken);
   try {
-    // todo 쿼리로 db에서 token 꺼내오고, 비교해야 함
     // req.decoded = jwt.verify(req.cookies.x_auth.accessToken, process.env.JWT_SECRET_KEY);
-    // req.decoded = jwt.verify(req.headers.authorization, process.env.JWT_SECRET_KEY);
-    req.decoded = jwt.verify(req.cookies.x_auth.accessToken, process.env.JWT_SECRET_KEY );
-    // console.log(req.fresh.cookies.x_auth.accessToken);
-    // console.log(req.decoded);
-    return next();
+    const accessToken = req.headers.authorization;
+    const { userInfo } = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
+    console.log(userInfo.id);
+    const findtoken = `SELECT token FROM users WHERE id = ${parseInt(userInfo.id, 10)};`;
+    con.query(findtoken, async (err, row) => {
+      if (err) throw err;
+      await row.map((item) => {
+        console.log(item.token)
+        if (item.token === accessToken) {
+          req.decoded = jwt.verify(item.token, process.env.JWT_SECRET_KEY);
+          con.end();
+          return next();
+        }
+        return res.status(401).json({ message: 'unauthorized token' });
+      });
+      // req.decoded = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
+    });
+    // // console.log(req.decoded);
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return res.status(419).json({
@@ -48,10 +62,29 @@ exports.verifyToken = (req, res, next) => {
     }
     return res.status(401).json({
       code: 401,
-      message: error,
+      message: 'unaurthorized',
     });
   }
 };
+
+// exports.verifyToken = (req, res, next) => {
+//   console.log(req.cookies);
+//   try {
+//     req.decoded = jwt.verify(req.cookies.x_auth.accessToken, process.env.JWT_SECRET_KEY );
+//     return next();
+//   } catch (error) {
+//     if (error.name === 'TokenExpiredError') {
+//       return res.status(419).json({
+//         code: 419,
+//         message: 'Token Expired',
+//       });
+//     }
+//     return res.status(401).json({
+//       code: 401,
+//       message: error,
+//     });
+//   }
+// };
 
 // exports.verifyToken = (req, res, next) => {
 //   console.log(req.headers.authorization);

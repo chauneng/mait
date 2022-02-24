@@ -11,6 +11,7 @@ const { verifyToken } = require('./middleware');
 
 router.get('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
+  console.log(userInfo, "******")
   if (!userInfo) {
     res.status(200).json({ message: 'No user info' });
   }
@@ -19,8 +20,9 @@ router.get('/signout', verifyToken, (req, res) => {
 });
 
 
-router.post('/signin', async (req, res, next) => {
+router.post('/signin', verifyToken, async (req, res, next) => {
   console.log("*****")
+  console.log(userInfo, "******")
   console.log(req.headers);
   res.header("ACCESS-Control-Allow-Origin", "https://maitapp.click");
   const { username, password } = req.body;
