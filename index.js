@@ -65,8 +65,8 @@ const connection = mysql.createConnection(dbconfig);
 // const jwt = require('./modules/jwt');
 
 const corsOptions = {
-  // origin: 'https://maitapp.click',
-  origin: '*',
+  origin: 'https://maitapp.click',
+  // origin: '*',
   credentials: true,
 };
 
@@ -99,41 +99,10 @@ app.engine('html', require('ejs').renderFile);
 
 
 
-// app.get('/cam', verifyToken, (req, res) => {
-//     console.log("cam entered!!");
-//     const room_id = uuidV4();
-//     const user_id = req.decoded.userInfo.id;
-//     const sql = `SELECT nickname from users WHERE id = ${user_id}`;
-//     con.query(sql, (err, result) => {
-//       if (err) throw err;
-//       console.log("result", result[0].nickname);
-//       res.send( {message: "SUCCESS", roomid: `${room_id}`, userName: `${result[0].nickname}`} );
-//     });
-//     // res.redirect(`/cam/${uuidV4()}`);
-//     // res.send( {message: "SUCCESS", roomid: `${room_id}`, userName: `${nickname}`} );
-// });
-
-// app.get('/cam/:room', verifyToken, (req, res) => {
-//     const user_id = req.decoded.userInfo.id;
-//     const room_id = req.params.room
-//     console.log(room_id, "room");
-//     const sql = `SELECT nickname from users WHERE id = ${user_id}`;
-//     // res.render('room', { roomId: room_id });
-//     con.query(sql, (err, result) => {
-//       if (err) throw err;
-//       console.log("result", result[0].nickname);
-//       res.send({message: "SUCCESS", userName: `${result[0].nickname}`})
-//     });
-//     // res.send({message: "SUCCESS"})
-//     // res.send( {message : "SUCCESS", roomid : `${room_id}`} );
-//   });
-
-
-////////// local에서 돌릴 때 -----
-  app.get('/cam', (req, res) => {
+app.get('/cam', verifyToken, (req, res) => {
     console.log("cam entered!!");
     const room_id = uuidV4();
-    const user_id = 1;
+    const user_id = req.decoded.userInfo.id;
     const sql = `SELECT nickname from users WHERE id = ${user_id}`;
     con.query(sql, (err, result) => {
       if (err) throw err;
@@ -144,20 +113,51 @@ app.engine('html', require('ejs').renderFile);
     // res.send( {message: "SUCCESS", roomid: `${room_id}`, userName: `${nickname}`} );
 });
 
-app.get('/cam/:room', (req, res) => {
-  const user_id = 1;
-  const room_id = req.params.room
-  console.log(room_id, "room");
-  const sql = `SELECT nickname from users WHERE id = ${user_id}`;
-  // res.render('room', { roomId: room_id });
-  con.query(sql, (err, result) => {
-    if (err) throw err;
-    console.log("result", result[0].nickname);
-    res.send({message: "SUCCESS", userName: `${result[0].nickname}`})
+app.get('/cam/:room', verifyToken, (req, res) => {
+    const user_id = req.decoded.userInfo.id;
+    const room_id = req.params.room
+    console.log(room_id, "room");
+    const sql = `SELECT nickname from users WHERE id = ${user_id}`;
+    // res.render('room', { roomId: room_id });
+    con.query(sql, (err, result) => {
+      if (err) throw err;
+      console.log("result", result[0].nickname);
+      res.send({message: "SUCCESS", userName: `${result[0].nickname}`})
+    });
+    // res.send({message: "SUCCESS"})
+    // res.send( {message : "SUCCESS", roomid : `${room_id}`} );
   });
-  // res.send({message: "SUCCESS"})
-  // res.send( {message : "SUCCESS", roomid : `${room_id}`} );
-});
+
+
+////////// local에서 돌릴 때 -----
+//   app.get('/cam', (req, res) => {
+//     console.log("cam entered!!");
+//     const room_id = uuidV4();
+//     const user_id = 1;
+//     const sql = `SELECT nickname from users WHERE id = ${user_id}`;
+//     con.query(sql, (err, result) => {
+//       if (err) throw err;
+//       console.log("result", result[0].nickname);
+//       res.send( {message: "SUCCESS", roomid: `${room_id}`, userName: `${result[0].nickname}`} );
+//     });
+//     // res.redirect(`/cam/${uuidV4()}`);
+//     // res.send( {message: "SUCCESS", roomid: `${room_id}`, userName: `${nickname}`} );
+// });
+
+// app.get('/cam/:room', (req, res) => {
+//   const user_id = 1;
+//   const room_id = req.params.room
+//   console.log(room_id, "room");
+//   const sql = `SELECT nickname from users WHERE id = ${user_id}`;
+//   // res.render('room', { roomId: room_id });
+//   con.query(sql, (err, result) => {
+//     if (err) throw err;
+//     console.log("result", result[0].nickname);
+//     res.send({message: "SUCCESS", userName: `${result[0].nickname}`})
+//   });
+//   // res.send({message: "SUCCESS"})
+//   // res.send( {message : "SUCCESS", roomid : `${room_id}`} );
+// });
 
 /////////로컬에서 돌릴 때 -----
 
@@ -265,6 +265,7 @@ app.get('/cam/:room', (req, res) => {
     socket.on('leave-room', ({ roomId, leaver }) => {
       console.log(socketList, "SOCKET LIST before");
       delete socketList[socket.id];
+      // delete participants.find()
       console.log(socketList, "SOCKET LIST after");
       socket.broadcast
         .to(roomId)
