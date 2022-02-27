@@ -54,15 +54,32 @@ router.get('/mainpage', verifyToken, (req, res) => {
       };
     //   console.log(result[0])
       const results ={}
+      const dateOfToday = new Date(`${today}T00:00:00`);
+      const dateOfTomorrow = new Date(`${today}T00:00:00`);
+      dateOfTomorrow.setDate(dateOfTomorrow.getDate() + 1);
       results.subjects = result[0].map((data) => {
+          const prevFlag = data.start_time - dateOfToday;
+          const nextFlag = data.updated_at - dateOfTomorrow;
           const {id, name, colorId} = data;
           let time = ((data["updated_at"]-data["start_time"])/1000);
           return {
               id,
               name,
               colorId,
-              totalTime: time
+              startTime: prevFlag < 0 ? dateOfToday : data.start_time,
+              endTime: nextFlag > 0 ? dateOfTomorrow : data.updated_at
           }
+      })
+      console.log(results.subjects, "results.subjects");
+      results.subjects = results.subjects.map((data) => {
+        const {id, name, colorId} = data;
+        let time = ((data["endTime"]-data["startTime"])/1000);
+        return {
+            id,
+            name,
+            colorId,
+            totalTime: time
+        }
       }).reduce((prev, curr) => {
           const arr = [...prev];
           const idx = prev.findIndex((elem) => elem.id === curr.id);

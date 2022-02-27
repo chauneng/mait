@@ -311,5 +311,75 @@ router.delete('/:id', verifyToken, (req, res) => {
   })
 })
 
+router.get('/ranking', (req, res) => {
+  // const user_id = req.decoded.userInfo.id;
+  console.log("rankign end point!");
+  let today = new Date();
+  today.setHours(today.getHours() + 9); 
+  today = today.toISOString().split('T')[0].substring(0, 19);
+  console.log(`today is ${today}`);
+  today = '2022-02-22';
+  console.log(`today is ${today}`);
+  sql = `SELECT 
+            sd.start_time, 
+            sd.updated_at,
+            sd.user_id as userId,
+            u.nickname
+         FROM study_durations AS sd
+         LEFT JOIN users AS u
+            ON sd.user_id = u.id
+         WHERE sd.updated_at IS NOT NULL
+            AND (DATE_FORMAT(sd.start_time, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d") 
+            OR DATE_FORMAT(sd.updated_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d"));`
+  con.query(sql, (err, result) => {
+    if(err) throw err;
+    console.log(result, "result")
+    const results = {}
+    const dateOfToday = new Date(`${today}T00:00:00`);
+    const dateOfTomorrow = new Date(`${today}T00:00:00`);
+    dateOfTomorrow.setDate(dateOfTomorrow.getDate() + 1);
+    console.log(dateOfToday, dateOfTomorrow);
+    results.ranking = result.map((data) => {
+      const prevFlag = data.start_time - dateOfToday;
+      const nextFlag = data.updated_at - dateOfTomorrow;
+      console.log(data, "data");
+      let { userId, nickname, startTime, updated_at } = data;
+      // let time = ((data["updated_at"] - data["start_time"]));
+      return {
+        userId,
+        nickname,
+        startTime: prevFlag < 0 ? dateOfToday : data.start_time,
+        endTime: nextFlag > 0 ? dateOfTomorrow : data.updated_at
+      }
+    })
+    console.log(results.ranking, "RANKING");
+      results.ranking = results.ranking.map((data) => {
+        // const {userId, name, colorId} = data;
+        let time = (data["endTime"]-data["startTime"]);
+        let { userId, nickname, startTime, endTime } = data;
+        return {
+            userId,
+            nickname,
+            totalTime: time
+        }
+      }).reduce((prev, curr) => {
+      const arr = [...prev];
+      const idx = prev.findIndex((elem) => elem.userId === curr.userId);
+      if (idx === -1) {
+        arr.push({
+          userId: curr.userId,
+          nickname: curr.nickname,
+          totalTime: curr.totalTime
+        });
+      } else {
+        arr[idx].totalTime += curr.totalTime;
+      }
+      return arr;
+    }, []);
+    results.ranking = results.ranking.sort((a, b) => (a.totalTime < b.totalTime? 1:-1));
+    return res.status(200).send({message: "SUCCESS", result: results.ranking});
+  })
+})
+
 
 module.exports = router;

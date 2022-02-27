@@ -9,14 +9,15 @@ const connection = mysql.createConnection(dbconfig);
 const { verifyToken } = require('./middleware');
 
 
-router.get('/signout', verifyToken, (req, res) => {
+router.post('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
   console.log(userInfo, "******")
   if (!userInfo) {
     res.status(200).json({ message: 'No user info' });
   }
-  connection.query(`UPDATE users SET token = null WHERE username = "${userInfo.username}";`);
-  res.clearCookie('x_auth').json({ message: 'success' });
+  connection.query(`UPDATE users SET token = null WHERE id = "${userInfo.id}";`);
+  // res.clearCookie('x_auth').json({ message: 'success' });
+  res.json({ message: 'success' });
 });
 
 

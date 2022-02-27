@@ -7,6 +7,7 @@ const connection = mysql.createConnection(dbconfig);
 const router = express.Router();
 
 router.post('/', verifyToken, (req, res) => {
+  console.log("************")
 // router.post('/', (req, res) => {
   // console.log(req.decoded, 1);
   // console.log(req.body, 1);
