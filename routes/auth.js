@@ -124,6 +124,12 @@ router.delete('/close', verifyToken, (req, res) => {
 router.patch('/mod', verifyToken, (req, res) => {
   const userInfo = req.decoded;
   const { currPassword, password, nickname, email } = req.body;
+
+  const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
+  if (password.length < 4) return res.send({ message: 'Invalid password' });
+  if (!nickname) return res.send({ message: 'Empty nickname' });
+  if (!regExp.test(email)) return res.send({ message: 'Invalid email' });
+
   try {
     con.query(`SELECT * FROM users WHERE id = ${userInfo.id}`, async (err, row) => {
       if (err) throw err;
