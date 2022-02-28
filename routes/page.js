@@ -13,9 +13,11 @@ router.get('/', (req, res) => {
 
 
 
-router.get('/mainpage', verifyToken, (req, res) => {
-  const user_id = req.decoded.userInfo.id;
-  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
+// router.get('/mainpage', verifyToken, (req, res) => {
+router.get('/mainpage', (req, res) => {
+//   const user_id = req.decoded.userInfo.id;
+  const user_id = 1;
+//   console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   let today = new Date();
   today.setHours(today.getHours() + 9); 
   today = today.toISOString().split('T')[0].substring(0, 19);

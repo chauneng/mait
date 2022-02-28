@@ -65,8 +65,8 @@ const connection = mysql.createConnection(dbconfig);
 // const jwt = require('./modules/jwt');
 
 const corsOptions = {
-  origin: 'https://maitapp.click',
-  // origin: '*',
+  // origin: 'https://maitapp.click',
+  origin: '*',
   credentials: true,
 };
 
