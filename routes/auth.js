@@ -1,13 +1,14 @@
 const express = require('express');
+
 const router = express.Router();
 const mysql = require('mysql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dbconfig = require('../config/database');
-const connection = mysql.createConnection(dbconfig);
+
+const con = mysql.createConnection(dbconfig);
 // const jwt = require('../modules/jwt');
 const { verifyToken } = require('./middleware');
-
 
 router.post('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
@@ -15,11 +16,10 @@ router.post('/signout', verifyToken, (req, res) => {
   if (!userInfo) {
     res.status(200).json({ message: 'No user info' });
   }
-  connection.query(`UPDATE users SET token = null WHERE id = "${userInfo.id}";`);
+  con.query(`UPDATE users SET token = null WHERE id = "${userInfo.id}";`);
   // res.clearCookie('x_auth').json({ message: 'success' });
   res.json({ message: 'success' });
 });
-
 
 router.post('/signin', async (req, res, next) => {
   // console.log("*****")
@@ -29,7 +29,7 @@ router.post('/signin', async (req, res, next) => {
   const { username, password } = req.body;
   try {
     // console.log(req.body.id);
-    await connection.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
+    await con.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
       if (error) throw error;
       // console.log(row);
       const User = row.shift();
@@ -47,7 +47,7 @@ router.post('/signin', async (req, res, next) => {
           // console.log(User);
           const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
           console.log(accessToken, "CREATE ACCESS TOKEN");
-          await connection.query(`UPDATE users SET token = "${accessToken}" WHERE username = "${User.username}";`);
+          await con.query(`UPDATE users SET token = "${accessToken}" WHERE username = "${User.username}";`);
           // const refreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
           return res.cookie(
             'x_auth',
@@ -74,7 +74,7 @@ router.post('/signup', (req, res, next) => {
   if (!nickname) return res.json({ message: 'Empty nickname' });
   if (!regExp.test(email)) return res.json({ message: 'Invalid email' });
   try {
-    connection.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
+    con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
       if (error) throw (error);
       if (!exUser) {
         return res.json({ message: 'connection error' });
@@ -84,7 +84,7 @@ router.post('/signup', (req, res, next) => {
       }
       const hashpw = await bcrypt.hash(password, 12);
       console.log(req.body);
-      connection.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
+      con.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
         username,
         hashpw,
         nickname,
@@ -98,64 +98,50 @@ router.post('/signup', (req, res, next) => {
   }
 });
 
-router.get('/refresh', (req, res) => {
-  try {
-    const headers = req.signedCookies.x_auth;
-    // console.log(headers.fresh)
-    // console.log(headers);
-    try {
-      const oldToken = jwt.verify(headers.accessToken, process.env.JWT_SECRET_KEY);
-      // console.log(oldToken);
-      res.redirect('/main');
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        const refreshToken = jwt.verify(headers.refreshToken, process.env.JWT_SECRET_KEY);
-        // console.log(refreshToken.userInfo.username)
-        connection.query(`SELECT id, username FROM users WHERE username = "${refreshToken.userInfo.username}"`, (error, row) => {
-          const User = row.shift();
-          // console.log(User);
-          if (User.username === refreshToken.userInfo.username) {
-            const userInfo = {
-              id: User.id,
-              username: User.username,
-            };
-            const freshRefreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
-            const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '3d' });
-            res.cookie('x_auth', { accessToken, freshRefreshToken }, { signed: true }).redirect('/main');
-          }
-        });
-      }
-    }
-  } catch (error) {
-    // console.log(error)
-    res.json({ message: 'fail to get cookies', error });
-  }
+router.delete('/close', verifyToken, (req, res) => {
+  const userInfo = req.decoded;
+  const { confirm, password } = req.body;
+
+  if (confirm !== '회원 탈퇴') return res.send({ message: 'not confirmed' });
+
+  const confirmSql = `SELECT * FROM users WHERE id =${userInfo.id};`;
+  con.query(confirmSql, async (err, row) => {
+    if (row.length === 0) return res.send({ message: 'cannot find user info' });
+
+    const result = await bcrypt.compare(password, row[0].password);
+    if (!result) return res.send({ message: 'wrong password' });
+
+    const sql = `DELETE FROM users WHERE id = ${userInfo.id};`;
+    con.query(sql, (err2, resultDeleted) => {
+      if (err2) throw err2;
+      if (resultDeleted[0].affectedRows !== 1) return res.send({ message: 'request failed' });
+
+      return res.send({ message: 'success' });
+    });
+  });
 });
 
-// router.post('/signin', async (req, res) => {
-//   const { username, password } = req.body;
-//   try {
-//     // console.log(req.body.id);
-//     await connection.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
-//       if (error) throw error;
-//       // console.log(row);
-//       const User = row.shift();
-//       if (User === undefined) {
-//         res.json({ message: 'Invalid id' });
-//       } else {
-//         const result = await bcrypt.compare(password, User.password);
-//         if (!result) {
-//           res.json({ message: 'Invalid password' });
-//         } else {
-//           const jwtToken = jwt.sign(User);
-//           await connection.query(`INSERT INTO users (token) VALUES (${jwtToken.refreshToken});`);
-//           res.status(200).json({ statusCode: 200, message: 'success', token: (await jwtToken).accessToken });
-//         }
-//       }
-//     });
-//   } catch (e) {
-//     res.json({ message: 'failed to login' });
-//   }
-// });
+router.patch('/mod', verifyToken, (req, res) => {
+  const userInfo = req.decoded;
+  const { currPassword, password, nickname, email } = req.body;
+  try {
+    con.query(`SELECT * FROM users WHERE id = ${userInfo.id}`, async (err, row) => {
+      if (err) throw err;
+      if (row.length === 0 || row[0].password === null) return res.send({ message: 'invalid request' });
+
+      const checkPassword = await bcrypt.compare(currPassword, row[0].password);
+      if (!checkPassword) return res.send({ message: 'wrong password' });
+
+      const newPassword = password === '' ? row[0].password : await bcrypt.hash(password, 12);
+      const newNickname = nickname === '' ? row[0].nickname : nickname;
+      const newEmail = email === '' ? row[0].email : email;
+
+      con.query(`UPDATE users SET password = "${newPassword}", nickname = "${newNickname}", email = "${newEmail}" WHERE id = ${userInfo.id};`);
+      return res.send({ message: 'success' });
+    });
+  } catch (e) {
+    return res.send({ message: e });
+  }
+});
 
 module.exports = router;
