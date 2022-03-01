@@ -1,37 +1,39 @@
 const express = require('express');
+
 const router = express.Router();
 const mysql = require('mysql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const qs = require('qs');
+const axios = require('axios');
+
 const dbconfig = require('../config/database');
-const connection = mysql.createConnection(dbconfig);
-// const jwt = require('../modules/jwt');
+
+const con = mysql.createConnection(dbconfig);
 const { verifyToken } = require('./middleware');
 
+function insertToken(userId, nickname) {
+  const userInfo = { userId, nickname };
+  const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
+  con.query(`UPDATE users SET token = "${accessToken}" WHERE id = "${userId}";`);
+  return accessToken;
+}
 
-router.post('/signout', verifyToken, (req, res) => {
+router.get('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
-  console.log(userInfo, "******")
   if (!userInfo) {
     res.status(200).json({ message: 'No user info' });
   }
-  connection.query(`UPDATE users SET token = null WHERE id = "${userInfo.id}";`);
-  // res.clearCookie('x_auth').json({ message: 'success' });
-  res.json({ message: 'success' });
+  con.query(`UPDATE users SET token = null WHERE username = "${userInfo.username}";`);
+  res.clearCookie('x_auth').json({ message: 'success' });
 });
 
-
 router.post('/signin', async (req, res, next) => {
-  // console.log("*****")
-  // console.log(userInfo, "******")
-  // console.log(req.headers);
-  res.header("ACCESS-Control-Allow-Origin", "https://maitapp.click");
+  res.header('ACCESS-Control-Allow-Origin', 'https://maitapp.click');
   const { username, password } = req.body;
   try {
-    // console.log(req.body.id);
-    await connection.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
+    await con.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
       if (error) throw error;
-      // console.log(row);
       const User = row.shift();
       if (User === undefined) {
         res.json({ message: 'Invalid id' });
@@ -40,19 +42,10 @@ router.post('/signin', async (req, res, next) => {
         if (!result) {
           res.json({ message: 'Invalid password' });
         } else {
-          const userInfo = {
-            id: User.id,
-            username: User.username,
-          };
-          // console.log(User);
-          const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
-          console.log(accessToken, "CREATE ACCESS TOKEN");
-          await connection.query(`UPDATE users SET token = "${accessToken}" WHERE username = "${User.username}";`);
-          // const refreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
+          const accessToken = insertToken(User.id, User.nickname);
           return res.cookie(
             'x_auth',
             { accessToken },
-            // { maxAge: 31536000, path: '/', domain: 'https://mait.shop', sameSite: 'Lax', httpOnly: true }
             { maxAge: 31536000, domain: 'https://mait.shop', sameSite: 'none', httpOnly: true, secure: true }
           ).json({ message: 'success', accessToken });
         }
@@ -74,7 +67,7 @@ router.post('/signup', (req, res, next) => {
   if (!nickname) return res.json({ message: 'Empty nickname' });
   if (!regExp.test(email)) return res.json({ message: 'Invalid email' });
   try {
-    connection.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
+    con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
       if (error) throw (error);
       if (!exUser) {
         return res.json({ message: 'connection error' });
@@ -83,8 +76,7 @@ router.post('/signup', (req, res, next) => {
         return res.json({ message: 'Existing user' });
       }
       const hashpw = await bcrypt.hash(password, 12);
-      console.log(req.body);
-      connection.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
+      con.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
         username,
         hashpw,
         nickname,
@@ -93,69 +85,69 @@ router.post('/signup', (req, res, next) => {
       return res.json({ message: 'success' });
     });
   } catch (error) {
-    // console.error(error);
     return next(error);
   }
 });
 
-router.get('/refresh', (req, res) => {
-  try {
-    const headers = req.signedCookies.x_auth;
-    // console.log(headers.fresh)
-    // console.log(headers);
-    try {
-      const oldToken = jwt.verify(headers.accessToken, process.env.JWT_SECRET_KEY);
-      // console.log(oldToken);
-      res.redirect('/main');
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        const refreshToken = jwt.verify(headers.refreshToken, process.env.JWT_SECRET_KEY);
-        // console.log(refreshToken.userInfo.username)
-        connection.query(`SELECT id, username FROM users WHERE username = "${refreshToken.userInfo.username}"`, (error, row) => {
-          const User = row.shift();
-          // console.log(User);
-          if (User.username === refreshToken.userInfo.username) {
-            const userInfo = {
-              id: User.id,
-              username: User.username,
-            };
-            const freshRefreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
-            const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '3d' });
-            res.cookie('x_auth', { accessToken, freshRefreshToken }, { signed: true }).redirect('/main');
-          }
-        });
-      }
-    }
-  } catch (error) {
-    // console.log(error)
-    res.json({ message: 'fail to get cookies', error });
-  }
+router.get('/kakao', (req, res) => {
+  const kakaoAuthURL = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_CLIENT_ID}&redirect_uri=${process.env.KAKAO_REDIRECT_URI}&response_type=code&scope=profile_nickname,account_email`;
+  res.redirect(kakaoAuthURL);
 });
 
-// router.post('/signin', async (req, res) => {
-//   const { username, password } = req.body;
-//   try {
-//     // console.log(req.body.id);
-//     await connection.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
-//       if (error) throw error;
-//       // console.log(row);
-//       const User = row.shift();
-//       if (User === undefined) {
-//         res.json({ message: 'Invalid id' });
-//       } else {
-//         const result = await bcrypt.compare(password, User.password);
-//         if (!result) {
-//           res.json({ message: 'Invalid password' });
-//         } else {
-//           const jwtToken = jwt.sign(User);
-//           await connection.query(`INSERT INTO users (token) VALUES (${jwtToken.refreshToken});`);
-//           res.status(200).json({ statusCode: 200, message: 'success', token: (await jwtToken).accessToken });
-//         }
-//       }
-//     });
-//   } catch (e) {
-//     res.json({ message: 'failed to login' });
-//   }
-// });
+router.get('/kakao/callback', async (req, res) => {
+  let token;
+  try {
+    token = await axios({
+      method: 'POST',
+      url: 'https://kauth.kakao.com/oauth/token',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      data: qs.stringify({
+        grant_type: 'authorization_code',
+        client_id: process.env.KAKAO_CLIENT_ID,
+        client_secret: process.env.KAKAO_CLIENT_SECRET_KEY,
+        redirectUri: process.env.KAKAO_REDIRECT_URI,
+        code: req.query.code,
+      }),
+    });
+  } catch (err) {
+    res.json(err.data);
+  }
+  let user;
+  try {
+    user = await axios({
+      method: 'get',
+      url: 'https://kapi.kakao.com/v2/user/me?property_keys=%5B%22properties.nickname%22%2C+%22kakao_account.email%22%5D&secure_resource=true',
+      headers: {
+        Authorization: `Bearer ${token.data.access_token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+  } catch (e) {
+    res.json(e.data);
+  }
+  try {
+    const searchQuery = `SELECT * FROM users 
+    WHERE social_type_id = ${parseInt(1, 10)} AND username = "${user.data.id}";`;
+    con.query(searchQuery, (err, row) => {
+      if (err) throw err;
+      if (row.length === 0) {
+        const signUpQuery = `INSERT INTO users (social_type_id, username, nickname, email) 
+        VALUES (${parseInt(1, 10)}, "${user.data.id}", "${user.data.properties.nickname}", "${user.data.kakao_account.email}");`;
+        con.query(signUpQuery, async (err2, result) => {
+          if (err2) throw err;
+          const accessToken = insertToken(result.insertId, user.data.id);
+          return res.json({ message: 'success', accessToken });
+        });
+      } else {
+        const accessToken = insertToken(row[0].id, row[0].username);
+        return res.json({ message: 'success', accessToken });
+      }
+    });
+  } catch (e) {
+    res.json(e.data);
+  }
+});
 
 module.exports = router;
