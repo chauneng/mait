@@ -12,6 +12,8 @@ router.post('/', verifyToken, (req, res) => {
   // console.log(req.decoded, 1);
   // console.log(req.body, 1);
   const { content, subjectId } = req.body;
+  console.log(req.body);
+  console.log(content, subjectId);
   const { userInfo } = req.decoded;
   // console.log(typeof parseInt(subjectId, 10));
   if (content?.length === 0 || content === undefined) {

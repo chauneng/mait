@@ -225,8 +225,12 @@ router.get('/period', verifyToken, async (req, res) => {
 // router.get('/period', async (req, res) => {
   const { userInfo } = req.decoded;
   // const userInfo = {id:1}
+  if (req.query === "") {
+    return res.status(400).send( {message: "INVALID_DATES"})
+  };
   const { startDate, endDate } = req.query;
   console.log(req.query);
+  console.log(endDate);
   const [endYear, endMonth, endDay] = endDate.split('-').map(item => parseInt(item));
   const endDateObj = new Date(endYear, endMonth - 1, endDay);
   // toKoreaTimeZone(endDateObj);
