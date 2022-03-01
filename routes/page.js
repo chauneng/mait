@@ -1,11 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const mysql = require('mysql');
+const dbconfig = require('../config/database');
+const { verifyToken } = require('./middleware');
+const con = mysql.createConnection(dbconfig);
 
-router.get('/mainpage', (req, res) => {
+
+
+router.get('/', (req, res) => {
+    return res.redirect('/mainpage');
+})
+
+
+
+router.get('/mainpage', verifyToken, (req, res) => {
+// router.get('/mainpage', (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+//   const user_id = 17;
+//   console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   let today = new Date();
   today.setHours(today.getHours() + 9); 
   today = today.toISOString().split('T')[0].substring(0, 19);
-  const user_id = 1;
   const sql_1 = `SELECT
                       s.id,
                       s.name,
@@ -28,28 +43,48 @@ router.get('/mainpage', (req, res) => {
                       t.subject_id AS subjectId, 
                       t.is_done AS isDone
                   FROM todos AS t 
-                  LEFT JOIN users AS u 
-                      ON u.id = ${user_id}
-                  WHERE DATE_FORMAT(t.created_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d");`;
+                  LEFT JOIN subjects AS s
+                      ON t.subject_id = s.id
+                  WHERE DATE_FORMAT(t.created_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d")
+                     AND t.user_id = ${user_id}
+                     AND s.is_deleted = 0;`;
   const sql_3 = `SELECT * FROM colors;`;
-  const sql_4 = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0`;
-  con.query(sql_1 + sql_2 + sql_3+ sql_4, function(err, result){
+  const sql_4 = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0;`;
+  const sql_5 = `SELECT nickname from users WHERE id = ${user_id}`;
+  con.query(sql_1 + sql_2 + sql_3+ sql_4 + sql_5, function(err, result){
       if(err) {
           console.log("Error Execution :", err);
           res.send("ERROR");
           throw err;
       };
-      console.log(result[0])
+    //   console.log(result[0])
       const results ={}
+      const dateOfToday = new Date(`${today}T00:00:00`);
+      const dateOfTomorrow = new Date(`${today}T00:00:00`);
+      dateOfTomorrow.setDate(dateOfTomorrow.getDate() + 1);
       results.subjects = result[0].map((data) => {
+          const prevFlag = data.start_time - dateOfToday;
+          const nextFlag = data.updated_at - dateOfTomorrow;
           const {id, name, colorId} = data;
           let time = ((data["updated_at"]-data["start_time"])/1000);
           return {
               id,
               name,
               colorId,
-              totalTime: time
+              startTime: prevFlag < 0 ? dateOfToday : data.start_time,
+              endTime: nextFlag > 0 ? dateOfTomorrow : data.updated_at
           }
+      })
+      console.log(results.subjects, "results.subjects");
+      results.subjects = results.subjects.map((data) => {
+        const {id, name, colorId} = data;
+        let time = ((data["endTime"]-data["startTime"])/1000);
+        return {
+            id,
+            name,
+            colorId,
+            totalTime: time
+        }
       }).reduce((prev, curr) => {
           const arr = [...prev];
           const idx = prev.findIndex((elem) => elem.id === curr.id);
@@ -83,11 +118,13 @@ router.get('/mainpage', (req, res) => {
               totalTime: `${pad(parseInt(hour), 2)}:${pad(parseInt(min), 2)}:${pad(parseInt(sec), 2)}`
           }
         }) 
-      res.send({"study" : results.subjects, "todos" : result[1], "colors" : result[2], "subjects": result[3]});
+      res.send({"study" : results.subjects, "todos" : result[1], "colors" : result[2], "subjects": result[3], "nickname": result[4][0].nickname});
   });
 });
 
-router.put('/subject/:id', (req, res) => {
+router.put('/subject/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const id = req.params.id
   const body = req.body;
   let name;
@@ -102,11 +139,10 @@ router.put('/subject/:id', (req, res) => {
   } else {
       name = body.name;
   }
-  const user_id = 1; // 토큰에서 받기!!
   const subject_check = `SELECT id FROM subjects WHERE user_id=${user_id} AND name="${name}" AND id != ${id}`
   con.query(subject_check, (err, result) => {
       if(err) throw err;
-      if (result != "") {
+      if (result != "") { ///// if (result) ??
           // console.log(result[0].id, "************")
           return res.status(400).send({message: "SUBJECT_EXISTS"});
       } else {
@@ -120,9 +156,11 @@ router.put('/subject/:id', (req, res) => {
 })
 
 
-router.delete('/subject/:id', (req, res) => {
+router.delete('/subject/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const id = req.params.id;
-  con.query(`UPDATE subjects SET is_deleted = 1 WHERE id = ${id};`, function(err, result) {
+  con.query(`UPDATE subjects SET is_deleted = 1 WHERE id = ${id} AND user_id = ${user_id};`, function(err, result) {
       if(err) throw err;
       console.log(result);
       res.status(200).send({message: "SUCCESS"})
@@ -130,11 +168,12 @@ router.delete('/subject/:id', (req, res) => {
 })
 
 
-router.post('/subject', (req, res) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  console.log(req.body)
+router.post('/subject', verifyToken, (req, res) => {
+//   res.header("Access-Control-Allow-Origin", "*");
+//   console.log(req.body)
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const body = req.body;
-  const user_id = 1; // 토큰에서 가져오기!
   if (body.subject === undefined | body.subject === "") {
       return res.status(401).send( {message: "NO_SUBJECT_PROVIDED"} )
   }
@@ -173,8 +212,9 @@ router.post('/subject', (req, res) => {
   }) 
 });
 
-router.post('/studytime', (req, res) => {
-  const user_id = 1;
+router.post('/studytime', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const subject_id = req.body.subjectId
   const start_time = req.body.startTime
   console.log(req.body, "*****")
@@ -188,8 +228,9 @@ router.post('/studytime', (req, res) => {
 });
 
 
-router.patch('/studytime/:id', (req, res) => {
-  const user_id = 1;
+router.patch('/studytime/:id', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const study_duration_id = req.params.id;
   const end_time = req.body.endTime;
   sql = `UPDATE study_durations SET updated_at = "${end_time}" WHERE id = ${study_duration_id};`

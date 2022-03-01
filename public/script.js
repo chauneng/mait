@@ -15,7 +15,7 @@ const peers = {};
 navigator.mediaDevices
   .getUserMedia({
     video: true,
-    audio: true,
+    audio: false,
   })
   .then((stream) => {
     addVideoStream(myVideo, stream);
@@ -32,6 +32,11 @@ navigator.mediaDevices
       connectToNewUser(userId, stream);
     });
   });
+
+
+socket.on("new-message", (id) => {
+  console.log("this is client!");
+});
 
 socket.on('user-disconnected', (userId) => {
   if (peers[userId]) peers[userId].close();

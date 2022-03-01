@@ -1,25 +1,31 @@
 const express = require('express');
+const router = express.Router();
 const mysql = require('mysql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dbconfig = require('../config/database');
-
-const router = express.Router();
 const connection = mysql.createConnection(dbconfig);
 // const jwt = require('../modules/jwt');
 const { verifyToken } = require('./middleware');
 
-router.get('/signout', verifyToken, (req, res) => {
+
+router.post('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
+  console.log(userInfo, "******")
   if (!userInfo) {
     res.status(200).json({ message: 'No user info' });
   }
-  connection.query(`UPDATE users SET token = null WHERE username = "${userInfo.username}";`);
-  res.clearCookie('x_auth').json({ message: 'success' });
+  connection.query(`UPDATE users SET token = null WHERE id = "${userInfo.id}";`);
+  // res.clearCookie('x_auth').json({ message: 'success' });
+  res.json({ message: 'success' });
 });
 
+
 router.post('/signin', async (req, res, next) => {
-  console.log(req.headers);
+  // console.log("*****")
+  // console.log(userInfo, "******")
+  // console.log(req.headers);
+  res.header("ACCESS-Control-Allow-Origin", "https://maitapp.click");
   const { username, password } = req.body;
   try {
     // console.log(req.body.id);
@@ -40,12 +46,14 @@ router.post('/signin', async (req, res, next) => {
           };
           // console.log(User);
           const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
+          console.log(accessToken, "CREATE ACCESS TOKEN");
           await connection.query(`UPDATE users SET token = "${accessToken}" WHERE username = "${User.username}";`);
           // const refreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
           return res.cookie(
             'x_auth',
             { accessToken },
-            { maxAge: 31536000, path: '/', domain: 'localhost', sameSite: 'Lax', httpOnly: true },
+            // { maxAge: 31536000, path: '/', domain: 'https://mait.shop', sameSite: 'Lax', httpOnly: true }
+            { maxAge: 31536000, domain: 'https://mait.shop', sameSite: 'none', httpOnly: true, secure: true }
           ).json({ message: 'success', accessToken });
         }
       }
@@ -60,7 +68,7 @@ router.post('/signup', (req, res, next) => {
     username, password, nickname, email,
   } = req.body;
   const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (!username) return res.json({ message: 'Empty IDfield' });
+  if (!username) return res.status(400).json({ message: 'Empty IDfield' });
   if (username.length > 16) return res.json({ message: 'Too long id' });
   if (password.length < 4) return res.json({ message: 'Invalid password' });
   if (!nickname) return res.json({ message: 'Empty nickname' });

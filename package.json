@@ -4,13 +4,15 @@
   "description": "익스프레스 연습",
   "main": "app.js",
   "scripts": {
-    "start": "npx nodemon -e js,html app.js",
+    "start": "npx nodemon -e js,html index.js",
     "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.26.0",
+    "bcrypt": "^5.0.1",
     "body-parser": "^1.19.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -18,11 +20,14 @@
     "ejs": "^3.1.6",
     "express": "^4.17.3",
     "http": "^0.0.1-security",
+    "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "mysql": "^2.18.1",
     "mysql2": "^2.3.3",
     "nodemon": "^2.0.15",
     "nunjucks": "^3.2.3",
+    "passport": "^0.5.2",
+    "passport-kakao": "^1.0.1",
     "socket.io": "^2.4.1",
     "socket.io-client": "^4.4.1",
     "uuid": "^8.3.2"
