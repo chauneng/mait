@@ -40,7 +40,7 @@ router.get('/mainpage', verifyToken, (req, res) => {
   const sql_2 = `SELECT * FROM colors;`;
   const sql_3 = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0;`;
   const sql_4 = `SELECT nickname from users WHERE id = ${user_id}`;
-  con.query(sql_1 + sql_2 + sql_3+ sql_4 + sql_5, function(err, result){
+  con.query(sql_1 + sql_2 + sql_3+ sql_4, function(err, result){
       if(err) {
           console.log("Error Execution :", err);
           res.send("ERROR");
