@@ -67,6 +67,9 @@ function rowsToDailyResponseData(rows, today) {
   subjectTotalTime = rangeTimeRaw.reduce((prev, curr) => {
     const arr = [...prev];
     const idx = prev.findIndex((elem) => elem.subjectId === curr.subjectId);
+    console.log(arr, "arr");
+    console.log(idx, "idx");
+    console.log(arr[idx].totalTime, "********************");
     arr[idx].totalTime += curr.endTime - curr.startTime;
     return arr;
   }, subjectTotalTime)
@@ -265,6 +268,10 @@ router.get('/period', verifyToken, async (req, res) => {
         console.log(item.updated_at+1);
         console.log();
       });
+
+      console.log("subjectColorPair : ",makeSubjectColorPair(subjectRow),
+      "subjectTotalTime : ", makeSubjectTotalTime(timeRow, startDate, endDate),
+      "subjectTodo : ", makeSubjectTodo(todoRow))
 
       return res.json( {
         subjectColorPair: makeSubjectColorPair(subjectRow),

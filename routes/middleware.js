@@ -37,18 +37,18 @@ exports.isNotLoggedIn = (req, res, next) => {
 
 exports.verifyToken = (req, res, next) => {
   try {
-    console.log(1, req.headers["authorization"]);
+    if (!req.headers["authorization"]) {
+      return res.status(401).send({message: "LOGIN_REQUIRED"});
+    }
     const accessToken = req.headers["authorization"];
-    console.log(2);
     const { userInfo } = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
-    const findtoken = `SELECT token FROM users WHERE id = ${parseInt(userInfo.id, 10)};`;
+    const findtoken = `SELECT token FROM users WHERE id = ${userInfo.id};`;
     con.query(findtoken, (err, result) => {
       if (err) throw err;
-      console.log(result[0].token, "token in DB");
-      console.log(accessToken, "access token");
+      // console.log(result[0].token, "token in DB");
+      // console.log(accessToken, "access token");
       if (result[0].token === accessToken) {
         req.decoded = jwt.verify(result[0].token, process.env.JWT_SECRET_KEY);
-        console.log("SUCCESS!!!!!!!!!!!!!!!", userInfo);
         return next();
       }
     })

@@ -6,53 +6,60 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const qs = require('qs');
 const axios = require('axios');
+const url = require('url');
 
 const dbconfig = require('../config/database');
 
 const con = mysql.createConnection(dbconfig);
 const { verifyToken } = require('./middleware');
 
-function insertToken(userId, nickname) {
-  const userInfo = { userId, nickname };
+function insertToken(id, nickname) {
+  const userInfo = { id, nickname };
   const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
-  con.query(`UPDATE users SET token = "${accessToken}" WHERE id = "${userId}";`);
+  con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
   return accessToken;
 }
 
-router.get('/signout', verifyToken, (req, res) => {
+router.post('/signout', verifyToken, (req, res) => {
   const { userInfo } = req.decoded;
+  console.log(userInfo, "*******");
+  console.log(userInfo);
   if (!userInfo) {
-    res.status(200).json({ message: 'No user info' });
+    res.status(200).json({ message: 'NO_USER_INFO' });
   }
-  con.query(`UPDATE users SET token = null WHERE username = "${userInfo.username}";`);
-  res.clearCookie('x_auth').json({ message: 'success' });
+  con.query(`UPDATE users SET token = null WHERE id = ${userInfo.id};`, (err, result) => {
+    if(err) {throw err};
+  });
+  res.clearCookie('x_auth').json({ message: 'SUCCESS' });
 });
 
-router.post('/signin', async (req, res, next) => {
-  res.header('ACCESS-Control-Allow-Origin', 'https://maitapp.click');
+router.post('/signin', async (req, res) => {
+  // res.header('ACCESS-Control-Allow-Origin', 'https://maitapp.click');
+  console.log(req.body, "***");
   const { username, password } = req.body;
+  console.log(username, "username");
+  console.log(password, "password");
   try {
     await con.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
       if (error) throw error;
-      const User = row.shift();
-      if (User === undefined) {
-        res.json({ message: 'Invalid id' });
+      if (row.length === 0) {
+        res.json({ message: 'INVALID_USERNAME' });
       } else {
-        const result = await bcrypt.compare(password, User.password);
+        const result = await bcrypt.compare(password, row[0].password);
         if (!result) {
-          res.json({ message: 'Invalid password' });
+          res.json({ message: 'INVALID_PASSWORD' });
         } else {
-          const accessToken = insertToken(User.id, User.nickname);
+          const accessToken = insertToken(row[0].id, row[0].username);
           return res.cookie(
             'x_auth',
             { accessToken },
             { maxAge: 31536000, domain: 'https://mait.shop', sameSite: 'none', httpOnly: true, secure: true }
-          ).json({ message: 'success', accessToken });
+          ).json({ message: 'SUCCESS', accessToken });
         }
       }
     });
   } catch (e) {
-    next();
+    // next();
   }
 });
 
@@ -60,20 +67,22 @@ router.post('/signup', (req, res, next) => {
   const {
     username, password, nickname, email,
   } = req.body;
+  console.log(req.body, "req_body");
   const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (!username) return res.status(400).json({ message: 'Empty IDfield' });
-  if (username.length > 16) return res.json({ message: 'Too long id' });
-  if (password.length < 4) return res.json({ message: 'Invalid password' });
-  if (!nickname) return res.json({ message: 'Empty nickname' });
-  if (!regExp.test(email)) return res.json({ message: 'Invalid email' });
+  if (!username) return res.status(200).json({ message: 'EMPTY_USERNAME' });
+  if (username.length > 16) return res.status(200).json({ message: 'ID_TOO_LONG' });
+  if (password.length < 4) return res.status(200).json({ message: 'PASSWORD_TOO_SHORT' });
+  if (!nickname) return res.status(200).json({ message: 'EMPTY_NICKNAME' });
+  if (!regExp.test(email)) return res.status(200).json({ message: 'EMAIL_INVALID' });
   try {
+    
     con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
       if (error) throw (error);
       if (!exUser) {
-        return res.json({ message: 'connection error' });
+        return res.status(200).json({ message: 'CONNECTION_ERROR' });
       }
       if (exUser.length !== 0) {
-        return res.json({ message: 'Existing user' });
+        return res.status(200).json({ message: 'USERNAME_EXISTS' });
       }
       const hashpw = await bcrypt.hash(password, 12);
       con.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
@@ -82,7 +91,7 @@ router.post('/signup', (req, res, next) => {
         nickname,
         email,
       ]);
-      return res.json({ message: 'success' });
+      return res.status(200).json({ message: 'SUCCESS' });
     });
   } catch (error) {
     return next(error);
@@ -95,8 +104,11 @@ router.get('/kakao', (req, res) => {
 });
 
 router.get('/kakao/callback', async (req, res) => {
+  console.log("********")
   let token;
+  
   try {
+    console.log("#############################1")
     token = await axios({
       method: 'POST',
       url: 'https://kauth.kakao.com/oauth/token',
@@ -110,7 +122,9 @@ router.get('/kakao/callback', async (req, res) => {
         redirectUri: process.env.KAKAO_REDIRECT_URI,
         code: req.query.code,
       }),
-    });
+      
+    }
+    )
   } catch (err) {
     res.json(err.data);
   }
@@ -123,7 +137,7 @@ router.get('/kakao/callback', async (req, res) => {
         Authorization: `Bearer ${token.data.access_token}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-    });
+    })
   } catch (e) {
     res.json(e.data);
   }
@@ -133,16 +147,22 @@ router.get('/kakao/callback', async (req, res) => {
     con.query(searchQuery, (err, row) => {
       if (err) throw err;
       if (row.length === 0) {
+        console.log("#############################11", user.data)
+        
         const signUpQuery = `INSERT INTO users (social_type_id, username, nickname, email) 
-        VALUES (${parseInt(1, 10)}, "${user.data.id}", "${user.data.properties.nickname}", "${user.data.kakao_account.email}");`;
+        VALUES (1, "${user.data.id}", "${user.data.properties.nickname}", "${user.data.kakao_account.email}");`;
         con.query(signUpQuery, async (err2, result) => {
           if (err2) throw err;
+          console.log("#############################12", result)
           const accessToken = insertToken(result.insertId, user.data.id);
-          return res.json({ message: 'success', accessToken });
+          
+          return res.json({ message: 'SUCCESS', accessToken });
         });
-      } else {
+      } 
+      else {
+        
         const accessToken = insertToken(row[0].id, row[0].username);
-        return res.json({ message: 'success', accessToken });
+        res.redirect(url.format({pathname: '/mainpage', data: {message : "SUCCESS", accessToken}}))
       }
     });
   } catch (e) {

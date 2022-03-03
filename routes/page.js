@@ -16,7 +16,7 @@ router.get('/', (req, res) => {
 router.get('/mainpage', verifyToken, (req, res) => {
 // router.get('/mainpage', (req, res) => {
   const user_id = req.decoded.userInfo.id;
-//   const user_id = 17;
+  // const user_id = 9;
 //   console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   let today = new Date();
   today.setHours(today.getHours() + 9); 
@@ -172,7 +172,7 @@ router.post('/subject', verifyToken, (req, res) => {
 //   res.header("Access-Control-Allow-Origin", "*");
 //   console.log(req.body)
   const user_id = req.decoded.userInfo.id;
-  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username, "/subject");
   const body = req.body;
   if (body.subject === undefined | body.subject === "") {
       return res.status(401).send( {message: "NO_SUBJECT_PROVIDED"} )
