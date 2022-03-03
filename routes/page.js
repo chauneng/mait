@@ -37,20 +37,9 @@ router.get('/mainpage', verifyToken, (req, res) => {
                   AND (sd.updated_at IS NOT NULL)
                   AND (DATE_FORMAT(sd.start_time, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d") 
                   OR DATE_FORMAT(sd.updated_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d"));`;
-  const sql_2 = `SELECT 
-                      t.id,
-                      t.content, 
-                      t.subject_id AS subjectId, 
-                      t.is_done AS isDone
-                  FROM todos AS t 
-                  LEFT JOIN subjects AS s
-                      ON t.subject_id = s.id
-                  WHERE DATE_FORMAT(t.created_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d")
-                     AND t.user_id = ${user_id}
-                     AND s.is_deleted = 0;`;
-  const sql_3 = `SELECT * FROM colors;`;
-  const sql_4 = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0;`;
-  const sql_5 = `SELECT nickname from users WHERE id = ${user_id}`;
+  const sql_2 = `SELECT * FROM colors;`;
+  const sql_3 = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0;`;
+  const sql_4 = `SELECT nickname from users WHERE id = ${user_id}`;
   con.query(sql_1 + sql_2 + sql_3+ sql_4 + sql_5, function(err, result){
       if(err) {
           console.log("Error Execution :", err);
@@ -118,9 +107,12 @@ router.get('/mainpage', verifyToken, (req, res) => {
               totalTime: `${pad(parseInt(hour), 2)}:${pad(parseInt(min), 2)}:${pad(parseInt(sec), 2)}`
           }
         }) 
-      res.send({"study" : results.subjects, "todos" : result[1], "colors" : result[2], "subjects": result[3], "nickname": result[4][0].nickname});
+      res.send({"study" : results.subjects, "colors" : result[1], "subjects": result[2], "nickname": result[3][0].nickname});
   });
 });
+
+
+
 
 router.put('/subject/:id', verifyToken, (req, res) => {
   const user_id = req.decoded.userInfo.id;
