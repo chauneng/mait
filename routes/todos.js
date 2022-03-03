@@ -6,6 +6,33 @@ const { verifyToken } = require('./middleware');
 const connection = mysql.createConnection(dbconfig);
 const router = express.Router();
 
+
+router.get('/', verifyToken, (req, res) => {
+  const user_id = req.decoded.userInfo.id;
+  let today = new Date();
+  today.setHours(today.getHours() + 9); 
+  today = today.toISOString().split('T')[0].substring(0, 19);
+  const todos= `SELECT 
+                      t.id,
+                      t.content, 
+                      t.subject_id AS subjectId, 
+                      t.is_done AS isDone
+                  FROM todos AS t 
+                  LEFT JOIN subjects AS s
+                      ON t.subject_id = s.id
+                  WHERE DATE_FORMAT(t.created_at, "%Y-%m-%d") = STR_TO_DATE("${today}", "%Y-%m-%d")
+                     AND t.user_id = ${user_id}
+                     AND s.is_deleted = 0;`;
+  const colors = `SELECT * FROM colors;`;
+  const subjects = `SELECT id, name, color_code_id as colorId FROM subjects WHERE user_id = ${user_id} AND is_deleted = 0;`;
+  connection.query(todos + colors + subjects, (err, result) => {
+      if(err) throw err;
+      console.log(result);
+      res.status(200).send({message: "SUCCESS", todos: result[0], colors: result[1], subjects: result[2]})
+  })
+})
+
+
 router.post('/', verifyToken, (req, res) => {
 // router.post('/', (req, res) => {
   // console.log(req.decoded, 1);
