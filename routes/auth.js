@@ -13,8 +13,8 @@ const dbconfig = require('../config/database');
 const con = mysql.createConnection(dbconfig);
 const { verifyToken } = require('./middleware');
 
-function insertToken(id, nickname) {
-  const userInfo = { id, nickname };
+function insertToken(id, username) {
+  const userInfo = { id, username };
   const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
   con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
   return accessToken;
@@ -99,8 +99,28 @@ router.post('/signup', (req, res, next) => {
 });
 
 router.get('/kakao', (req, res) => {
-  const kakaoAuthURL = `https://kauth.kakao.com/oauth/authorize?client_id=${process.env.KAKAO_CLIENT_ID}&redirect_uri=${process.env.KAKAO_REDIRECT_URI}&response_type=code&scope=profile_nickname,account_email`;
-  res.redirect(kakaoAuthURL);
+  const { username, email, nickname } = req.body;
+  try {
+    const searchQuery = `SELECT * FROM users 
+    WHERE social_type_id = 1 AND username = "${username}";`;
+    con.query(searchQuery, (err, row) => {
+      if (err) throw err;
+      if (row.length === 0) {
+        const signUpQuery = `INSERT INTO users (social_type_id, username, nickname, email) 
+        VALUES (1, "${username}", "${nickname}", "${email}");`;
+        con.query(signUpQuery, async (err2, result) => {
+          if (err2) throw err;
+          const accessToken = insertToken(result.insertId, username);
+          return res.json({ message: 'SUCCESS', accessToken });
+        });
+      } else {
+        const accessToken = insertToken(row[0].id, row[0].username);
+        return res.json({ message: 'SUCCESS', accessToken });
+      }
+    });
+  } catch (e) {
+    res.json(e.data);
+  }
 });
 
 router.get('/kakao/callback', async (req, res) => {
