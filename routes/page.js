@@ -64,7 +64,6 @@ router.get('/mainpage', verifyToken, (req, res) => {
               endTime: nextFlag > 0 ? dateOfTomorrow : data.updated_at
           }
       })
-      console.log(results.subjects, "results.subjects");
       results.subjects = results.subjects.map((data) => {
         const {id, name, colorId} = data;
         let time = ((data["endTime"]-data["startTime"])/1000);
@@ -206,15 +205,15 @@ router.post('/subject', verifyToken, (req, res) => {
 
 router.post('/studytime', verifyToken, (req, res) => {
   const user_id = req.decoded.userInfo.id;
-  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
+  // console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const subject_id = req.body.subjectId
   const start_time = req.body.startTime
-  console.log(req.body, "*****")
+  // console.log(req.body, "*****")
   sql = `INSERT INTO study_durations(subject_id, user_id, start_time) VALUES(${subject_id}, ${user_id}, "${start_time}");`
   con.query(sql, function(err, result) {
       if(err) throw err;
       db_index = result.insertId;
-      console.log(db_index);
+      // console.log(db_index);
       return res.status(200).send({message: "SUCCESS", id: db_index})
   })
 });
