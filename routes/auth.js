@@ -43,11 +43,11 @@ router.post('/signin', async (req, res) => {
     await con.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
       if (error) throw error;
       if (row.length === 0) {
-        res.json({ message: 'INVALID_USERNAME' });
+        res.status(400).json({ message: 'INVALID_USERNAME' });
       } else {
         const result = await bcrypt.compare(password, row[0].password);
         if (!result) {
-          res.json({ message: 'INVALID_PASSWORD' });
+          res.status(400).json({ message: 'INVALID_PASSWORD' });
         } else {
           const accessToken = insertToken(row[0].id, row[0].username);
           return res.cookie(
