@@ -4,99 +4,141 @@ const router = express.Router();
 const mysql = require('mysql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+
 const dbconfig = require('../config/database');
 
 const con = mysql.createConnection(dbconfig);
-// const jwt = require('../modules/jwt');
 const { verifyToken } = require('./middleware');
 
-router.post('/signout', verifyToken, (req, res) => {
-  const { userInfo } = req.decoded;
-  console.log(userInfo, "******")
-  if (!userInfo) {
-    res.status(200).json({ message: 'No user info' });
-  }
-  con.query(`UPDATE users SET token = null WHERE id = "${userInfo.id}";`);
-  // res.clearCookie('x_auth').json({ message: 'success' });
-  res.json({ message: 'success' });
-});
+function insertToken(id, username) {
+  const userInfo = { id, username };
+  const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
+  con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
+  return accessToken;
+}
 
-router.post('/signin', async (req, res, next) => {
-  // console.log("*****")
-  // console.log(userInfo, "******")
-  // console.log(req.headers);
-  res.header("ACCESS-Control-Allow-Origin", "https://maitapp.click");
+router.post('/signin', async (req, res) => {
   const { username, password } = req.body;
   try {
-    // console.log(req.body.id);
-    await con.query(`SELECT * FROM users WHERE username = "${username}";`, async (error, row) => {
+    await con.query(`SELECT * FROM users WHERE username = "${username}" AND social_type_id IS NULL;`, async (error, row) => {
       if (error) throw error;
-      // console.log(row);
-      const User = row.shift();
-      if (User === undefined) {
-        res.json({ message: 'Invalid id' });
+      if (row.length === 0) {
+        res.status(400).json({ message: 'INVALID_USERNAME' });
       } else {
-        const result = await bcrypt.compare(password, User.password);
+        const result = await bcrypt.compare(password, row[0].password);
         if (!result) {
-          res.json({ message: 'Invalid password' });
+          res.status(400).json({ message: 'INVALID_PASSWORD' });
         } else {
-          const userInfo = {
-            id: User.id,
-            username: User.username,
-          };
-          // console.log(User);
-          const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
-          console.log(accessToken, "CREATE ACCESS TOKEN");
-          await con.query(`UPDATE users SET token = "${accessToken}" WHERE username = "${User.username}";`);
-          // const refreshToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' });
-          return res.cookie(
-            'x_auth',
-            { accessToken },
-            // { maxAge: 31536000, path: '/', domain: 'https://mait.shop', sameSite: 'Lax', httpOnly: true }
-            { maxAge: 31536000, domain: 'https://mait.shop', sameSite: 'none', httpOnly: true, secure: true }
-          ).json({ message: 'success', accessToken });
+          const accessToken = insertToken(row[0].id, row[0].username);
+          return res.status(200).json({ message: 'SUCCESS', accessToken });
         }
       }
     });
   } catch (e) {
-    next();
+    return res.status(400).json({ message: e });
   }
 });
 
-router.post('/signup', (req, res, next) => {
-  const {
-    username, password, nickname, email,
-  } = req.body;
-  const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (!username) return res.status(400).json({ message: 'Empty IDfield' });
-  if (username.length > 16) return res.json({ message: 'Too long id' });
-  if (password.length < 4) return res.json({ message: 'Invalid password' });
-  if (!nickname) return res.json({ message: 'Empty nickname' });
-  if (!regExp.test(email)) return res.json({ message: 'Invalid email' });
+router.post('/signout', verifyToken, (req, res) => {
+  const { userInfo } = req.decoded;
+  if (!userInfo) {
+    res.status(400).json({ message: 'NO_USER_INFO' });
+  }
+  try {
+    con.query(`UPDATE users SET token = null WHERE id = ${userInfo.id};`, (err, result) => {
+      if (err) throw err;
+    });
+  } catch (e) {
+    return res.status(400).json({ message: e });
+  }
+  res.status(200).json({ message: 'SUCCESS' });
+});
+
+router.post('/signup', (req, res) => {
+  const { username, password, nickname, email } = req.body;
+  const regExpEmail = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
+  const regExpUsername = /^[a-z0-9A-Z]{1,16}$/i;
+  const regExpNickname = /^[\S]{1,20}$/i;
+  const regExpPassword = /^[a-z0-9A-Z!@#$%^&*]{4,72}$/i;
+  if (!regExpUsername.test(username)) return res.status(400).json({ message: 'USERNAME_INVALID' });
+  if (!regExpNickname.test(nickname)) return res.status(400).json({ message: 'NICKNAME_INVALID' });
+  if (!regExpPassword.test(password)) return res.status(400).json({ message: 'PASSWORD_INVALID' });
+  if (!regExpEmail.test(email)) return res.status(400).json({ message: 'EMAIL_INVALID' });
   try {
     con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
       if (error) throw (error);
       if (!exUser) {
-        return res.json({ message: 'connection error' });
+        return res.status(400).json({ message: 'CONNECTION_ERROR' });
       }
       if (exUser.length !== 0) {
-        return res.json({ message: 'Existing user' });
+        return res.status(400).json({ message: 'USERNAME_EXISTS' });
       }
       const hashpw = await bcrypt.hash(password, 12);
-      console.log(req.body);
       con.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
-        username,
-        hashpw,
-        nickname,
-        email,
+        username, hashpw, nickname, email,
       ]);
-      return res.json({ message: 'success' });
+      return res.status(200).json({ message: 'SUCCESS' });
     });
   } catch (error) {
-    // console.error(error);
-    return next(error);
+    return res.status(400).json({ message: error });
   }
 });
+
+
+router.post('/signup', (req, res) => {
+  const { username, password, nickname, email } = req.body;
+  const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
+  if (username.length === 0) return res.status(400).json({ message: 'EMPTY_USERNAME' });
+  if (username.length > 16) return res.status(400).json({ message: 'ID_TOO_LONG' });
+  if (password.length < 4) return res.status(400).json({ message: 'PASSWORD_TOO_SHORT' });
+  if (nickname.length === 0 || nickname.length > 16) return res.status(400).json({ message: 'EMPTY_NICKNAME' });
+  if (!regExp.test(email)) return res.status(400).json({ message: 'EMAIL_INVALID' });
+  try {
+    con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
+      if (error) throw (error);
+      if (!exUser) {
+        return res.status(400).json({ message: 'CONNECTION_ERROR' });
+      }
+      if (exUser.length !== 0) {
+        return res.status(400).json({ message: 'USERNAME_EXISTS' });
+      }
+      const hashpw = await bcrypt.hash(password, 12);
+      con.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
+        username, hashpw, nickname, email,
+      ]);
+      return res.status(200).json({ message: 'SUCCESS' });
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error });
+  }
+});
+
+router.post('/kakao', (req, res) => {
+  const { username, email, nickname } = req.body;
+  try {
+    const searchQuery = `SELECT * FROM users 
+    WHERE social_type_id = 1 AND username = "${username}";`;
+    con.query(searchQuery, (err, row) => {
+      if (err) throw err;
+      if (row.length === 0) {
+        const signUpQuery = `INSERT INTO users (social_type_id, username, nickname, email, created_at) 
+        VALUES (1, "${username}", "${nickname}", "${email}", NOW());`;
+        con.query(signUpQuery, async (err2, result) => {
+          if (err2) throw err;
+          const accessToken = insertToken(result.insertId, username);
+          return res.status(200).json({ message: 'SUCCESS', accessToken });
+        });
+      } else {
+        const accessToken = insertToken(row[0].id, row[0].username);
+        return res.status(200).json({ message: 'SUCCESS', accessToken });
+      }
+    });
+  } catch (e) {
+    res.json(e.data);
+  }
+});
+
+
 
 router.delete('/close', verifyToken, (req, res) => {
   const userInfo = req.decoded;
@@ -149,5 +191,7 @@ router.patch('/mod', verifyToken, (req, res) => {
     return res.send({ message: e });
   }
 });
+
+
 
 module.exports = router;
