@@ -113,21 +113,21 @@ router.delete('/close', verifyToken, (req, res) => {
   const userInfo = req.decoded;
   const { confirm, password } = req.body;
 
-  if (confirm !== '회원 탈퇴') return res.send({ message: 'not confirmed' });
+  if (confirm !== '회원 탈퇴') return res.status(400).send({ message: 'CONFIRM_INVALID' });
 
   const confirmSql = `SELECT * FROM users WHERE id =${userInfo.id};`;
   con.query(confirmSql, async (err, row) => {
-    if (row.length === 0) return res.send({ message: 'cannot find user info' });
+    if (row.length === 0) return res.status(400).send({ message: 'USERINFO_INVALID' });
 
     const result = await bcrypt.compare(password, row[0].password);
-    if (!result) return res.send({ message: 'wrong password' });
+    if (!result) return res.status(400).send({ message: 'PASSWORD_INVALID' });
 
     const sql = `DELETE FROM users WHERE id = ${userInfo.id};`;
     con.query(sql, (err2, resultDeleted) => {
       if (err2) throw err2;
-      if (resultDeleted[0].affectedRows !== 1) return res.send({ message: 'request failed' });
+      if (resultDeleted[0].affectedRows !== 1) return res.status(400).send({ message: 'REQUEST_INVALID' });
 
-      return res.send({ message: 'success' });
+      return res.status(200).send({ message: 'SUCCESS' });
     });
   });
 });
@@ -136,28 +136,30 @@ router.patch('/mod', verifyToken, (req, res) => {
   const userInfo = req.decoded;
   const { currPassword, password, nickname, email } = req.body;
 
-  const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (password.length < 4) return res.send({ message: 'Invalid password' });
-  if (!nickname) return res.send({ message: 'Empty nickname' });
-  if (!regExp.test(email)) return res.send({ message: 'Invalid email' });
+  const regExpEmail = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
+  const regExpNickname = /^[\S]{1,20}$/i;
+  const regExpPassword = /^[a-z0-9A-Z!@#$%^&*]{4,72}$/i;
+  if (!regExpPassword.test(password)) return res.status(400).send({ message: 'PASSWORD_INVALID' });
+  if (!regExpNickname.test(nickname)) return res.status(400).send({ message: 'NICKNAME_INVALID' });
+  if (!regExpEmail.test(email)) return res.status(400).send({ message: 'EMAIL_INVALID' });
 
   try {
     con.query(`SELECT * FROM users WHERE id = ${userInfo.id}`, async (err, row) => {
       if (err) throw err;
-      if (row.length === 0 || row[0].password === null) return res.send({ message: 'invalid request' });
+      if (row.length === 0 || row[0].password === null) return res.status(400).send({ message: 'REQUEST_INVALID' });
 
       const checkPassword = await bcrypt.compare(currPassword, row[0].password);
-      if (!checkPassword) return res.send({ message: 'wrong password' });
+      if (!checkPassword) return res.status(400).send({ message: 'CURR_PASSWORD_INVALID' });
 
       const newPassword = password === '' ? row[0].password : await bcrypt.hash(password, 12);
       const newNickname = nickname === '' ? row[0].nickname : nickname;
       const newEmail = email === '' ? row[0].email : email;
 
       con.query(`UPDATE users SET password = "${newPassword}", nickname = "${newNickname}", email = "${newEmail}" WHERE id = ${userInfo.id};`);
-      return res.send({ message: 'success' });
+      return res.status(200).send({ message: 'SUCCESS' });
     });
   } catch (e) {
-    return res.send({ message: e });
+    return res.status(400).send({ message: e });
   }
 });
 
