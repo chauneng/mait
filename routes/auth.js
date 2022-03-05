@@ -84,35 +84,6 @@ router.post('/signup', (req, res) => {
   }
 });
 
-
-router.post('/signup', (req, res) => {
-  const { username, password, nickname, email } = req.body;
-  const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (username.length === 0) return res.status(400).json({ message: 'EMPTY_USERNAME' });
-  if (username.length > 16) return res.status(400).json({ message: 'ID_TOO_LONG' });
-  if (password.length < 4) return res.status(400).json({ message: 'PASSWORD_TOO_SHORT' });
-  if (nickname.length === 0 || nickname.length > 16) return res.status(400).json({ message: 'EMPTY_NICKNAME' });
-  if (!regExp.test(email)) return res.status(400).json({ message: 'EMAIL_INVALID' });
-  try {
-    con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
-      if (error) throw (error);
-      if (!exUser) {
-        return res.status(400).json({ message: 'CONNECTION_ERROR' });
-      }
-      if (exUser.length !== 0) {
-        return res.status(400).json({ message: 'USERNAME_EXISTS' });
-      }
-      const hashpw = await bcrypt.hash(password, 12);
-      con.query('INSERT INTO users (username, password, created_at, nickname, email) VALUES (?, ?, NOW(), ?, ?)', [
-        username, hashpw, nickname, email,
-      ]);
-      return res.status(200).json({ message: 'SUCCESS' });
-    });
-  } catch (error) {
-    return res.status(400).json({ message: error });
-  }
-});
-
 router.post('/kakao', (req, res) => {
   const { username, email, nickname } = req.body;
   try {
@@ -137,8 +108,6 @@ router.post('/kakao', (req, res) => {
     res.json(e.data);
   }
 });
-
-
 
 router.delete('/close', verifyToken, (req, res) => {
   const userInfo = req.decoded;
@@ -191,7 +160,5 @@ router.patch('/mod', verifyToken, (req, res) => {
     return res.send({ message: e });
   }
 });
-
-
 
 module.exports = router;
