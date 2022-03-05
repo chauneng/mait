@@ -82,7 +82,7 @@ router.post('/signup', (req, res) => {
   }
 });
 
-router.get('/kakao', (req, res) => {
+router.post('/kakao', (req, res) => {
   const { username, email, nickname } = req.body;
   try {
     const searchQuery = `SELECT * FROM users 
