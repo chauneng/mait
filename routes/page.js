@@ -7,9 +7,9 @@ const con = mysql.createConnection(dbconfig);
 
 
 
-router.get('/', (req, res) => {
-    return res.redirect('/mainpage');
-})
+// router.get('/', (req, res) => {
+//     return res.redirect('/mainpage');
+// })
 
 
 
