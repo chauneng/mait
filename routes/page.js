@@ -204,23 +204,29 @@ router.post('/subject', verifyToken, (req, res) => {
 });
 
 router.post('/studytime', verifyToken, (req, res) => {
+// router.post('/studytime', (req, res) => {
   const user_id = req.decoded.userInfo.id;
-  // console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
+  // const user_id = 5
+  console.log(req.body, "BODY!!!!")
+  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const subject_id = req.body.subjectId
   const start_time = req.body.startTime
   // console.log(req.body, "*****")
   sql = `INSERT INTO study_durations(subject_id, user_id, start_time) VALUES(${subject_id}, ${user_id}, "${start_time}");`
+  console.log(sql, "SQL")
   con.query(sql, function(err, result) {
       if(err) throw err;
       db_index = result.insertId;
-      // console.log(db_index);
+      console.log(result, db_index, "!!!!!!!!!!!!");
       return res.status(200).send({message: "SUCCESS", id: db_index})
   })
 });
 
 
 router.patch('/studytime/:id', verifyToken, (req, res) => {
+// router.patch('/studytime/:id', (req, res) => {
   const user_id = req.decoded.userInfo.id;
+  // const user_id = 5;
   console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const study_duration_id = req.params.id;
   const end_time = req.body.endTime;
