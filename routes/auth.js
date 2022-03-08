@@ -39,19 +39,20 @@ router.post('/signin', async (req, res) => {
   }
 });
 
-router.post('/signout', verifyToken, (req, res) => {
-  const { userInfo } = req.decoded;
-  if (!userInfo) {
-    res.status(400).json({ message: 'NO_USER_INFO' });
-  }
+router.post('/signout', (req, res) => {
   try {
-    con.query(`UPDATE users SET token = null WHERE id = ${userInfo.id};`, (err, result) => {
+    con.query(`SELECT id FROM users WHERE token = "${req.headers['authorization']}";`, (err, row) => {
       if (err) throw err;
+      if (row.length === 0) return res.status(200).json({ message: 'SUCCESS' });
+      const { id } = row[0];
+      con.query(`UPDATE users SET token = null WHERE id = ${id};`, (err2, result) => {
+        if (err2) throw err2;
+        return res.status(200).json({ message: 'SUCCESS' });
+      });
     });
   } catch (e) {
     return res.status(400).json({ message: e });
   }
-  res.status(200).json({ message: 'SUCCESS' });
 });
 
 router.post('/signup', (req, res) => {
