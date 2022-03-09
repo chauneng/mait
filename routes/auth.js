@@ -16,22 +16,6 @@ function insertToken(id, username) {
   con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
   return accessToken;
 }
-
-router.post('/signout', verifyToken, (req, res) => {
-  const { userInfo } = req.decoded;
-  if (!userInfo) {
-    res.status(400).json({ message: 'NO_USER_INFO' });
-  }
-  try {
-    con.query(`UPDATE users SET token = null WHERE id = ${userInfo.id};`, (err, result) => {
-      if (err) throw err;
-    });
-  } catch (e) {
-    return res.status(400).json({ message: e });
-  }
-  res.status(200).json({ message: 'SUCCESS' });
-});
-
 router.post('/signin', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -54,14 +38,35 @@ router.post('/signin', async (req, res) => {
   }
 });
 
+router.post('/signout', (req, res) => {
+  try {
+    const { userId, username } = jwt.decode(req.headers['authorization']);
+    con.query(`SELECT token FROM users WHERE id = ${userId};`, (err, row) => {
+      if (err) throw err;
+      if (row.length === 0) return res.status(200).json({ message: 'SUCCESS' });
+      const { id } = row[0];
+      con.query(`UPDATE users SET token = null WHERE id = ${id};`, (err2, result) => {
+        if (err2) throw err2;
+        return res.status(200).json({ message: 'SUCCESS' });
+      });
+    });
+  } catch (e) {
+    return res.status(400).json({ message: e });
+
+  }
+});
+
 router.post('/signup', (req, res) => {
   const { username, password, nickname, email } = req.body;
-  const regExp = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
-  if (username.length === 0) return res.status(400).json({ message: 'EMPTY_USERNAME' });
-  if (username.length > 16) return res.status(400).json({ message: 'ID_TOO_LONG' });
-  if (password.length < 4) return res.status(400).json({ message: 'PASSWORD_TOO_SHORT' });
-  if (nickname.length === 0 || nickname.length > 16) return res.status(400).json({ message: 'EMPTY_NICKNAME' });
-  if (!regExp.test(email)) return res.status(400).json({ message: 'EMAIL_INVALID' });
+  const regExpEmail = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
+  const regExpUsername = /^[a-z0-9A-Z]{1,16}$/i;
+  const regExpNickname = /^[\S]{1,20}$/i;
+  const regExpPassword = /^[a-z0-9A-Z!@#$%^&*]{4,72}$/i;
+  if (!regExpUsername.test(username)) return res.status(400).json({ message: 'USERNAME_INVALID' });
+  if (!regExpNickname.test(nickname)) return res.status(400).json({ message: 'NICKNAME_INVALID' });
+  if (!regExpPassword.test(password)) return res.status(400).json({ message: 'PASSWORD_INVALID' });
+  if (!regExpEmail.test(email)) return res.status(400).json({ message: 'EMAIL_INVALID' });
+
   try {
     con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
       if (error) throw (error);
@@ -104,6 +109,60 @@ router.post('/kakao', (req, res) => {
     });
   } catch (e) {
     res.json(e.data);
+  }
+});
+
+router.delete('/close', verifyToken, (req, res) => {
+  const userInfo = req.decoded;
+  const { confirm, password } = req.body;
+
+  if (confirm !== '회원 탈퇴') return res.status(400).send({ message: 'CONFIRM_INVALID' });
+
+  const confirmSql = `SELECT * FROM users WHERE id =${userInfo.id};`;
+  con.query(confirmSql, async (err, row) => {
+    if (row.length === 0) return res.status(400).send({ message: 'USERINFO_INVALID' });
+
+    const result = await bcrypt.compare(password, row[0].password);
+    if (!result) return res.status(400).send({ message: 'PASSWORD_INVALID' });
+
+    const sql = `DELETE FROM users WHERE id = ${userInfo.id};`;
+    con.query(sql, (err2, resultDeleted) => {
+      if (err2) throw err2;
+      if (resultDeleted[0].affectedRows !== 1) return res.status(400).send({ message: 'REQUEST_INVALID' });
+
+      return res.status(200).send({ message: 'SUCCESS' });
+    });
+  });
+});
+
+router.patch('/mod', verifyToken, (req, res) => {
+  const userInfo = req.decoded;
+  const { currPassword, password, nickname, email } = req.body;
+
+  const regExpEmail = /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*.[a-zA-Z]{2,3}$/i;
+  const regExpNickname = /^[\S]{1,20}$/i;
+  const regExpPassword = /^[a-z0-9A-Z!@#$%^&*]{4,72}$/i;
+  if (!regExpPassword.test(password)) return res.status(400).send({ message: 'PASSWORD_INVALID' });
+  if (!regExpNickname.test(nickname)) return res.status(400).send({ message: 'NICKNAME_INVALID' });
+  if (!regExpEmail.test(email)) return res.status(400).send({ message: 'EMAIL_INVALID' });
+
+  try {
+    con.query(`SELECT * FROM users WHERE id = ${userInfo.id}`, async (err, row) => {
+      if (err) throw err;
+      if (row.length === 0 || row[0].password === null) return res.status(400).send({ message: 'REQUEST_INVALID' });
+
+      const checkPassword = await bcrypt.compare(currPassword, row[0].password);
+      if (!checkPassword) return res.status(400).send({ message: 'CURR_PASSWORD_INVALID' });
+
+      const newPassword = password === '' ? row[0].password : await bcrypt.hash(password, 12);
+      const newNickname = nickname === '' ? row[0].nickname : nickname;
+      const newEmail = email === '' ? row[0].email : email;
+
+      con.query(`UPDATE users SET password = "${newPassword}", nickname = "${newNickname}", email = "${newEmail}" WHERE id = ${userInfo.id};`);
+      return res.status(200).send({ message: 'SUCCESS' });
+    });
+  } catch (e) {
+    return res.status(400).send({ message: e });
   }
 });
 
