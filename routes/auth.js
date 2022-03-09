@@ -16,6 +16,7 @@ function insertToken(id, username) {
   con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
   return accessToken;
 }
+
 router.post('/signin', async (req, res) => {
   const { username, password } = req.body;
   try {
