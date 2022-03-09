@@ -16,7 +16,6 @@ function insertToken(id, username) {
   con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
   return accessToken;
 }
-
 router.post('/signin', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -53,6 +52,7 @@ router.post('/signout', (req, res) => {
     });
   } catch (e) {
     return res.status(400).json({ message: e });
+
   }
 });
 
@@ -66,6 +66,7 @@ router.post('/signup', (req, res) => {
   if (!regExpNickname.test(nickname)) return res.status(400).json({ message: 'NICKNAME_INVALID' });
   if (!regExpPassword.test(password)) return res.status(400).json({ message: 'PASSWORD_INVALID' });
   if (!regExpEmail.test(email)) return res.status(400).json({ message: 'EMAIL_INVALID' });
+
   try {
     con.query(`SELECT * FROM users WHERE username = "${username}"`, async (error, exUser) => {
       if (error) throw (error);

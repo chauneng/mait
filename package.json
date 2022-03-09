@@ -20,16 +20,21 @@
     "ejs": "^3.1.6",
     "express": "^4.17.3",
     "http": "^0.0.1-security",
+    "httpolyglot": "^0.1.2",
     "jsonwebtoken": "^8.5.1",
+    "mediasoup": "^3.9.8",
     "morgan": "^1.10.0",
     "mysql": "^2.18.1",
     "mysql2": "^2.3.3",
     "nodemon": "^2.0.15",
-    "nunjucks": "^3.2.3",
-    "passport": "^0.5.2",
-    "passport-kakao": "^1.0.1",
-    "socket.io": "^2.4.1",
-    "socket.io-client": "^4.4.1",
-    "uuid": "^8.3.2"
+    "qs": "^6.10.3",
+    "socket.io": "^2.3.0",
+    "socket.io-client": "^2.4.0",
+    "url": "^0.11.0",
+    "uuid": "^8.3.2",
+    "wrtc": "^0.4.7"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.5"
   }
 }

@@ -20,9 +20,12 @@ exports.verifyToken = (req, res, next) => {
     return res.status(401).send({message: "LOGIN_REQUIRED"});
   }
   try {
+    if (!req.headers["authorization"]) {
+      return res.status(401).send({message: "LOGIN_REQUIRED"});
+    }
     const accessToken = req.headers["authorization"];
     const { userInfo } = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
-    const findtoken = `SELECT token FROM users WHERE id = ${parseInt(userInfo.id, 10)};`;
+    const findtoken = `SELECT token FROM users WHERE id = ${userInfo.id};`;
     con.query(findtoken, (err, result) => {
       if (err) throw err;
       if (result[0].token === accessToken) {
