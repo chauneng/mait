@@ -16,6 +16,9 @@ dotenv.config();
 cookieParser();
 
 exports.verifyToken = (req, res, next) => {
+  if (!req.headers["authorization"]) {
+    return res.status(401).send({message: "LOGIN_REQUIRED"});
+  }
   try {
     const accessToken = req.headers["authorization"];
     const { userInfo } = jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
