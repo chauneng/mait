@@ -25,6 +25,11 @@ exports.verifyToken = (req, res, next) => {
       if (result[0].token === accessToken) {
         req.decoded = jwt.verify(result[0].token, process.env.JWT_SECRET_KEY);
         return next();
+      } else {
+      return res.status(401).json({
+        code: 401,
+        message: 'UNAUTORIZED',
+      });
       }
     })
   } catch (error) {
@@ -33,11 +38,10 @@ exports.verifyToken = (req, res, next) => {
         code: 419,
         message: 'Token Expired',
       });
-      // return res.redirect('/refresh');
     }
     return res.status(401).json({
       code: 401,
-      message: 'unaurthorized',
+      message: 'UNAUTORIZED',
     });
   };
 };

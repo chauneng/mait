@@ -41,7 +41,8 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signout', (req, res) => {
   try {
-    con.query(`SELECT id FROM users WHERE token = "${req.headers['authorization']}";`, (err, row) => {
+    const { userId, username } = jwt.decode(req.headers['authorization']);
+    con.query(`SELECT token FROM users WHERE id = ${userId};`, (err, row) => {
       if (err) throw err;
       if (row.length === 0) return res.status(200).json({ message: 'SUCCESS' });
       const { id } = row[0];
