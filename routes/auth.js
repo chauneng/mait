@@ -41,7 +41,9 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signout', (req, res) => {
   try {
-    const { userId, username } = jwt.decode(req.headers['authorization']);
+    if (req.headers['authorization'] === undefined)  {
+    return res.status(200).json({ message: 'SUCCESS' })}
+    const { userId, username } = jwt.decode(req.headers[';authorization']);
     con.query(`SELECT token FROM users WHERE id = ${userId};`, (err, row) => {
       if (err) throw err;
       if (row.length === 0) return res.status(200).json({ message: 'SUCCESS' });
