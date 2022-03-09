@@ -41,10 +41,8 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signout', (req, res) => {
   try {
-    if (req.headers['authorization'] === undefined)  {
-    return res.status(200).json({ message: 'SUCCESS' })}
-    const { userId, username } = jwt.decode(req.headers[';authorization']);
-    con.query(`SELECT token FROM users WHERE id = ${userId};`, (err, row) => {
+    if (req.headers['authorization'] === undefined) return res.status(200).json({ message: 'SUCCESS' })
+    con.query(`SELECT id FROM users WHERE token = "${req.headers['authorization']}";`, (err, row) => {
       if (err) throw err;
       if (row.length === 0) return res.status(200).json({ message: 'SUCCESS' });
       const { id } = row[0];
@@ -55,7 +53,6 @@ router.post('/signout', (req, res) => {
     });
   } catch (e) {
     return res.status(400).json({ message: e });
-
   }
 });
 
