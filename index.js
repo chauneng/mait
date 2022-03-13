@@ -906,13 +906,9 @@ app.get('/cam/:room', verifyToken, (req, res) => {
 
 
 
-
-
-
-  // 현세
+  //// 현세
   let socketList = {};
   let participants = {};
-  let peers = {};
 
   // app.use(express.static(path.join(__dirname, 'public')));
   
@@ -936,22 +932,11 @@ app.get('/cam/:room', verifyToken, (req, res) => {
   // Socket
   io.on('connection', (socket) => {
     // console.log(`New User connected: ${socket.id}`);
-
-
-    socket.on('disconnect', () => {
-      console.log('socket disconnected ' + socket.id)
-      socket.broadcast.emit('remove-Peer', socket.id) /////
-      delete peers[socket.id]
-  });
   
-    // socket.on('disconnect', () => {
-    //   socket.disconnect();
-    //   console.log('User disconnected!');
-    // });
-    // socket.on('disconnect', () => {
-    //   console.log("roomId : ", roomId, "userId : ", userId );
-    //   socket.to(roomId).broadcast.emit('user-disconnected', userId);
-    //   });
+    socket.on('disconnect', () => {
+      socket.disconnect();
+      console.log('User disconnected!');
+    });
   
     socket.on('check-user', ({ roomId, userName }) => {
       let error = false;
@@ -972,13 +957,12 @@ app.get('/cam/:room', verifyToken, (req, res) => {
     socket.on('join-room', ({roomId, userName, userUniqueId}) => {
       // Socket Join RoomName
       socket.join(roomId);
-      // participants[userUniqueId] =  socket.id;
-      console.log(userName, userUniqueId, "NEW JOINER TO", roomId );
+      participants[userUniqueId] =  socket.id;
+      console.log(userName, userUniqueId, "NEW JOINER", roomId);
       // console.log(participants);
-      console.log(socket);
-      socketList[socket.id] = { userName, userUniqueId, socket, roomId, video: true, audio: true };
+      socketList[socket.id] = { userName, userUniqueId, video: true, audio: true };
       // socketList[userUniqueId] = { userName, userUniqueId, video: true, audio: true };
-      console.log(socketList[socket.id], "socket: check socket!!!!");
+      // console.log(socketList, "socket list");
       // Set User List  
       io.sockets.in(roomId).clients((err, clients) => {
         // console.log(clients, "client_1");
@@ -991,25 +975,12 @@ app.get('/cam/:room', verifyToken, (req, res) => {
             // console.log(users, "****USERS****");
           });
           console.log(users, "users");
-          // socket.broadcast.to(roomId).emit('user-join', users);
-          console.log(roomId, socket.id, "TO SEND")
-          socket.broadcast.to(roomId).emit('init-receive', socket.id);
-          console.log("INIT RECEIVE SENT");
+          socket.broadcast.to(roomId).emit('user-join', users);
         } catch (e) {
           io.sockets.in(roomId).emit('error-user-exist', { err: true });
         }
       });
     });
-
-    socket.on('init-send', userId => {
-      console.log(`INIT SEND by ${socket.id} for ${userId}`);
-      console.log(socketList[userId], "socket!!!___1")
-      console.log(socketList[userId]);
-      socketList[userId].socket.emit('init-send', socket.id);
-      // socketList[userId]는 소켓이어야함. 
-    })
-
-
   
     // socket.on('call-user', ({ userToCall, from, signal }) => {
     //   io.to(userToCall).emit('receive-call', {
@@ -1028,8 +999,8 @@ app.get('/cam/:room', verifyToken, (req, res) => {
       });
     });
   
-    socket.on('signal', ({ signal, to }) => {
-      io.to(to).emit('signal', {
+    socket.on('accept-call', ({ signal, to }) => {
+      io.to(to).emit('call-accepted', {
         signal,
         answerId: socket.id,
       });
@@ -1064,14 +1035,28 @@ app.get('/cam/:room', verifyToken, (req, res) => {
       delete socketList[leaverId];
       // delete participants.find()
       console.log(socketList, "SOCKET LIST after");
-      // socket.broadcast
-      //   .to(roomId)
-      //   .emit('user-leave', { userId: socket.id, userName: leaver_nickname });
-      socket.broadcast.to(roomId).emit('remove-peer', socket.id);
+      socket.broadcast
+        .to(roomId)
+        .emit('user-leave', { userId: socket.id, userName: leaver_nickname });
       io.sockets.sockets[socket.id].leave(roomId);
       }
     });
+  
+    // socket.on('toggle-camera-audio', ({ roomId, switchTarget }) => {
+    //   if (switchTarget === 'video') {
+    //     socketList[socket.id].video = !socketList[socket.id].video;
+    //   } else {
+    //     console.log(socketList, "== socketlist");
+    //     console.log(socketList[socket.id], "socket.id");
+    //     console.log(socketList[socket.id].audio, "audio!!!");
+    //     socketList[socket.id].audio = !socketList[socket.id].audio;
+    //   }
+    //   socket.broadcast
+    //     .to(roomId)
+    //     .emit('toggle-camera', { userId: socket.id, switchTarget });
+    // });
   });
+
 
   
 
