@@ -9,31 +9,12 @@ const dbconfig = require('../config/database');
 
 const con = mysql.createConnection(dbconfig);
 const { verifyToken } = require('./middleware');
-
-function insertToken(id, username) {
-  const userInfo = { id, username };
-  const accessToken = jwt.sign({ userInfo }, process.env.JWT_SECRET_KEY, { expiresIn: '30d' });
-  con.query(`UPDATE users SET token = "${accessToken}" WHERE id = ${id};`);
-  return accessToken;
-}
+const signInService = require('../sevice/signInService');
 
 router.post('/signin', async (req, res) => {
   const { username, password } = req.body;
   try {
-    await con.query(`SELECT * FROM users WHERE username = "${username}" AND social_type_id IS NULL;`, async (error, row) => {
-      if (error) throw error;
-      if (row.length === 0) {
-        res.status(400).json({ message: 'INVALID_USERNAME' });
-      } else {
-        const result = await bcrypt.compare(password, row[0].password);
-        if (!result) {
-          res.status(400).json({ message: 'INVALID_PASSWORD' });
-        } else {
-          const accessToken = insertToken(row[0].id, row[0].username);
-          return res.status(200).json({ message: 'SUCCESS', accessToken });
-        }
-      }
-    });
+    res.status(200).json({ message:'SUCCESS', accessToken: signInService.signIn(username, password)});
   } catch (e) {
     return res.status(400).json({ message: e });
   }

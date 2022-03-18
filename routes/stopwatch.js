@@ -12,7 +12,6 @@ router.get('/stopwatch', (req, res) => {
 });
 
 router.post('/stopwatch', (req, res) => {
-  // res.header("Access-Control-Allow-Origin", "*");
   const body = req.body;
   const sql = `INSERT INTO study_durations(subject, user_id, start_time, end_time, created_at) VALUES (${body.subject}, ${body.user_id}, ${body.start_time}, ${body.end_time}, NOW())`;
   console.log(sql);

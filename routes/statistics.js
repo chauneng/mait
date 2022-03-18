@@ -22,17 +22,10 @@ function msToHmsFormat(time) {
   return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-// function toKoreaTimeZone(date){
-//   date.setHours(date.getHours() + 9); 
-// }
-
 function rowsToDailyResponseData(rows, today) {
-  // console.log(rows, "*****");
   const dateOfToday = new Date(`${today}T00:00:00`);
-  // console.log(dateOfToday, "dateoftoday");///
   const dateOfTomorrow = new Date(`${today}T00:00:00`);
   dateOfTomorrow.setDate(dateOfTomorrow.getDate() + 1);
-  // console.log((dateOfTomorrow), "******");//
   const [userLog, subjects] = rows; 
   const rangeTimeRaw = userLog
   .map(item => {
@@ -50,8 +43,6 @@ function rowsToDailyResponseData(rows, today) {
   const rangeTime = rangeTimeRaw.map(item => {
     const startTime = new Date(item.startTime.getTime());
     const endTime = new Date(item.endTime.getTime());
-    // toKoreaTimeZone(startTime);
-    // toKoreaTimeZone(endTime);
     return {...item, startTime:dateToReturnFormat(startTime), endTime:dateToReturnFormat(endTime)}
   })
   
@@ -67,9 +58,6 @@ function rowsToDailyResponseData(rows, today) {
   subjectTotalTime = rangeTimeRaw.reduce((prev, curr) => {
     const arr = [...prev];
     const idx = prev.findIndex((elem) => elem.subjectId === curr.subjectId);
-    console.log(arr, "arr");
-    console.log(idx, "idx");
-    console.log(arr[idx].totalTime, "********************");
     arr[idx].totalTime += curr.endTime - curr.startTime;
     return arr;
   }, subjectTotalTime)
@@ -143,7 +131,6 @@ function getDayTotalTime(timeRow, day) {
 function splitTimeRow(timeRow) {
   return timeRow.flatMap(item => {
     const startDate = new Date(item.start_time.getTime());
-    // toKoreaTimeZone(startDate);
     const today = dateToReturnFormat(startDate).substring(0, 10);
     const splitPoint = new Date(`${today}T00:00:00`);
     splitPoint.setDate(splitPoint.getDate() + 1);
@@ -181,7 +168,6 @@ function makeSubjectTotalTime(timeRow, startDate, endDate) {
   timeRow = splitTimeRow(timeRow);
   while(startDateObj <= endDateObj){
     const currentDate = new Date(startDateObj.getTime())
-    // toKoreaTimeZone(currentDate);
     const dateKey = dateToReturnFormat(currentDate).substring(0, 10);
     returnObj[dateKey] = getDayTotalTime(timeRow, startDateObj);
     startDateObj.setDate(startDateObj.getDate() + 1);
@@ -191,14 +177,8 @@ function makeSubjectTotalTime(timeRow, startDate, endDate) {
 // 다른 파일로 빼도 좋을 것 같습니다. 여기까지 
 
 router.get('/daily', verifyToken, async (req, res) => {
-  // router.get('/daily', verifyToken, async (req, res) => {
   const { userInfo } = req.decoded;
-  // const userInfo = {id: 1}
-  // const user_id = req.decoded.userInfo.id;
-  console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const { today } = req.query;
-  console.log(today);
-  
   try {
     const sql = `SELECT sd.subject_id, 
     sd.start_time, 
@@ -225,18 +205,13 @@ router.get('/daily', verifyToken, async (req, res) => {
 });
 
 router.get('/period', verifyToken, async (req, res) => {
-// router.get('/period', async (req, res) => {
   const { userInfo } = req.decoded;
-  // const userInfo = {id:1}
   if (req.query === "") {
     return res.status(400).send( {message: "INVALID_DATES"})
   };
   const { startDate, endDate } = req.query;
-  console.log(req.query);
-  console.log(endDate);
   const [endYear, endMonth, endDay] = endDate.split('-').map(item => parseInt(item));
   const endDateObj = new Date(endYear, endMonth - 1, endDay);
-  // toKoreaTimeZone(endDateObj);
   endDateObj.setDate(endDateObj.getDate() + 1);
   const realEndDate = dateToReturnFormat(endDateObj).substring(0, 10)
   try {
@@ -259,19 +234,13 @@ router.get('/period', verifyToken, async (req, res) => {
       AND updated_at IS NOT NULL
       AND ((sd.start_time >= STR_TO_DATE("${startDate}", "%Y-%m-%d") AND sd.start_time < STR_TO_DATE("${realEndDate}", "%Y-%m-%d"))
       OR (sd.updated_at >= STR_TO_DATE("${startDate}", "%Y-%m-%d") AND sd.updated_at < STR_TO_DATE("${realEndDate}", "%Y-%m-%d")));`;
-     // await connection.query(sql, async (err, row) => {
     con.query(subjectQ + todoQ + timeQ, async (err, row) => {
       if (err) throw err;
       const [subjectRow, todoRow, timeRow] = row;
       timeRow.forEach(item => {
         console.log(item.start_time+1);
         console.log(item.updated_at+1);
-        console.log();
       });
-
-      console.log("subjectColorPair : ",makeSubjectColorPair(subjectRow),
-      "subjectTotalTime : ", makeSubjectTotalTime(timeRow, startDate, endDate),
-      "subjectTodo : ", makeSubjectTodo(todoRow))
 
       return res.json( {
         subjectColorPair: makeSubjectColorPair(subjectRow),
@@ -288,7 +257,6 @@ router.get('/edit', verifyToken, (req, res) => {
   const user_id = req.decoded.userInfo.id;
   console.log(req.decoded.userInfo.id, req.decoded.userInfo.username);
   const date = req.body.date /// 키값 확인
-  // const date = "2022-02-21"
   sql = `SELECT id, subject_id, start_time, updated_at FROM study_durations WHERE user_id = ${user_id} AND updated_at is NOT NULL
   AND(DATE_FORMAT(updated_at, "%Y-%m-%d") = STR_TO_DATE("${date}", "%Y-%m-%d") OR DATE_FORMAT(start_time, "%Y-%m-%d") = STR_TO_DATE("${date}", "%Y-%m-%d"));`
   con.query(sql, function(err, result) {
@@ -323,7 +291,6 @@ router.delete('/:id', verifyToken, (req, res) => {
 })
 
 router.get('/ranking', verifyToken, (req, res) => {
-// router.get('/ranking', (req, res) => {
   const user_id  = req.decoded.userInfo.id;
   let today = new Date();
   console.log(today);
@@ -383,7 +350,6 @@ router.get('/ranking', verifyToken, (req, res) => {
     results.ranking = results.ranking.sort((a, b) => (a.totalTime < b.totalTime? 1:-1));
     const rank = results.ranking.findIndex(outcome => outcome.userId === user_id);
     return res.status(200).send({message: "SUCCESS", result: results.ranking, rank: `${rank+1}`});
-    // return res.status(200).send({message: "SUCCESS", result: results.ranking, rank: 1});
   })
 })
 
